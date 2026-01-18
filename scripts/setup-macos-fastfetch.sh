@@ -479,6 +479,8 @@ download_logos_enhanced() {
         local logos=(
             "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/505px-Apple_logo_black.svg.png|apple-logo.png"
             "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/MacOS_logo_%282017%29.svg/512px-MacOS_logo_%282017%29.svg.png|macos-logo.png"
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Tux.svg/256px-Tux.svg.png|tux-penguin.png"
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Logo-ubuntu_cof-orange-hex.svg/256px-Logo-ubuntu_cof-orange-hex.svg.png|ubuntu-logo.png"
         )
         
         for logo_info in "${logos[@]}"; do
@@ -498,6 +500,36 @@ download_logos_enhanced() {
     log_success "Logo setup completed"
 }
 
+# Create logo selector script
+create_logo_selector() {
+    log_info "Creating logo selector script..."
+    
+    local logo_selector='#!/bin/bash
+
+LOGO_DIR="$HOME/.config/fastfetch/logo"
+
+# Check if logos directory exists and has files
+if [ -d "$LOGO_DIR" ]; then
+    # Find all image files
+    LOGOS=($(find "$LOGO_DIR" -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.icon" -o -name "*.txt" \) 2>/dev/null))
+    
+    if [ ${#LOGOS[@]} -gt 0 ]; then
+        # Select random logo
+        RANDOM_LOGO=${LOGOS[$RANDOM % ${#LOGOS[@]}]}
+        echo "$RANDOM_LOGO"
+        exit 0
+    fi
+fi
+
+# Fallback to auto detection
+echo "auto"'
+    
+    safe_create_file "$HOME/.local/bin/fastfetch-logo.sh" "$logo_selector" "" || return 1
+    chmod +x "$HOME/.local/bin/fastfetch-logo.sh"
+    
+    log_success "Logo selector script created"
+}
+
 # Enhanced fastfetch configuration
 configure_fastfetch_enhanced() {
     log_info "Configuring fastfetch..."
@@ -509,7 +541,7 @@ configure_fastfetch_enhanced() {
     local fastfetch_config='{
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "logo": {
-    "source": "auto",
+    "source": "$(~/.local/bin/fastfetch-logo.sh)",
     "height": 18,
     "type": "kitty"
   },
@@ -924,6 +956,7 @@ main() {
     install_packages
     configure_kitty_enhanced
     download_logos_enhanced
+    create_logo_selector
     configure_fastfetch_enhanced
     configure_shell_enhanced
     create_enhanced_uninstall_script
