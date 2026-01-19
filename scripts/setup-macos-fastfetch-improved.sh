@@ -320,8 +320,7 @@ install_oh_my_zsh() {
     fi
     
     # Backup existing oh-my-zsh if it exists
-    create_directory_backup "$HOME/.oh-my-zsh" "oh-my-zsh"
-    MODIFIED_FILES+=("oh_my_zsh")
+    [[ -d "$HOME/.oh-my-zsh" ]] && create_directory_backup "$HOME/.oh-my-zsh" "oh-my-zsh" && MODIFIED_FILES+=("oh_my_zsh")
     
     # Download and install Oh-My-Zsh
     curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -o "$TEMP_DIR/install_omz.sh"
