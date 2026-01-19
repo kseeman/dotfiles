@@ -530,6 +530,29 @@ echo "auto"'
     log_success "Logo selector script created"
 }
 
+# Create smart ff-kitty script
+create_ff_kitty_script() {
+    log_info "Creating smart ff-kitty script..."
+    
+    local ff_kitty_script='#!/bin/bash
+
+# Smart fastfetch with random anime logos for Kitty terminal
+
+if [[ "$TERM_PROGRAM" == *"kitty"* ]] || [[ "$TERM" == *"kitty"* ]]; then
+    # In Kitty terminal - use random anime image with size constraints
+    LOGO=$(~/.local/bin/fastfetch-logo.sh)
+    fastfetch --logo "$LOGO" --logo-type kitty-icat --logo-width 30 --logo-height 18 --logo-preserve-aspect-ratio --config ~/.config/fastfetch/config.jsonc
+else
+    # In other terminals - fallback to built-in logos
+    fastfetch --config ~/.config/fastfetch/config.jsonc
+fi'
+    
+    safe_create_file "$HOME/.local/bin/ff-kitty.sh" "$ff_kitty_script" "" || return 1
+    chmod +x "$HOME/.local/bin/ff-kitty.sh"
+    
+    log_success "Smart ff-kitty script created"
+}
+
 # Enhanced fastfetch configuration
 configure_fastfetch_enhanced() {
     log_info "Configuring fastfetch..."
@@ -542,8 +565,10 @@ configure_fastfetch_enhanced() {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "logo": {
     "source": "$(~/.local/bin/fastfetch-logo.sh)",
+    "width": 30,
     "height": 18,
-    "type": "kitty"
+    "type": "kitty-icat",
+    "preserveAspectRatio": true
   },
   "display": {
     "separator": " : "
@@ -699,18 +724,14 @@ do_render_image() {
 # Display system info on startup (only in interactive shells)
 if [[ $- == *i* ]] && [[ -z "$TMUX" ]] && [[ -z "$VSCODE_INJECTION" ]] && [[ "$SHLVL" -eq 1 ]]; then
     if command -v fastfetch >/dev/null 2>&1; then
-        if do_render_image; then
-            fastfetch --logo-type kitty --config ~/.config/fastfetch/config.jsonc 2>/dev/null || fastfetch --logo-type kitty 2>/dev/null || fastfetch
-        else
-            fastfetch --config ~/.config/fastfetch/config.jsonc 2>/dev/null || fastfetch
-        fi
+        ~/.local/bin/ff-kitty.sh 2>/dev/null || fastfetch
     fi
 fi
 
 # Convenient aliases
-alias ff='\''fastfetch --logo-type kitty --config ~/.config/fastfetch/config.jsonc 2>/dev/null || fastfetch --logo-type kitty'\''
-alias fastfetch='\''fastfetch --logo-type kitty'\''
-alias clear-and-fetch='\''clear && fastfetch --logo-type kitty'\''
+alias ff='\''~/.local/bin/ff-kitty.sh'\''
+alias fastfetch='\''~/.local/bin/ff-kitty.sh'\''
+alias clear-and-fetch='\''clear && ~/.local/bin/ff-kitty.sh'\''
 
 # Add ~/.local/bin to PATH if it'\''s not already there
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
@@ -824,6 +845,7 @@ fi
 
 # Remove created scripts
 rm -f ~/.local/bin/fastfetch-logo.sh
+rm -f ~/.local/bin/ff-kitty.sh
 rm -f ~/.local/bin/uninstall-fastfetch-setup.sh
 
 # Remove installation log
@@ -908,6 +930,15 @@ comprehensive_test() {
         log_warning "△ Logo directory empty or missing"
     fi
     
+    # Test ff-kitty script
+    ((test_total++))
+    if [[ -x "$HOME/.local/bin/ff-kitty.sh" ]]; then
+        log_success "✓ Smart ff-kitty script created"
+        ((test_passed++))
+    else
+        log_error "✗ Smart ff-kitty script missing"
+    fi
+    
     # Test uninstall script
     ((test_total++))
     if [[ -x "$HOME/.local/bin/uninstall-fastfetch-setup.sh" ]]; then
@@ -957,6 +988,7 @@ main() {
     configure_kitty_enhanced
     download_logos_enhanced
     create_logo_selector
+    create_ff_kitty_script
     configure_fastfetch_enhanced
     configure_shell_enhanced
     create_enhanced_uninstall_script
@@ -976,13 +1008,14 @@ main() {
         echo
         log_info "🚀 Next steps:"
         echo "  1. Restart your terminal or run: source ~/.zshrc"
-        echo "  2. Open Kitty terminal for the best experience"
-        echo "  3. Try running: ff (alias for fastfetch)"
-        echo "  4. Add your own logos to ~/.config/fastfetch/logo/"
+        echo "  2. Open Kitty terminal for the best experience with PNG images"
+        echo "  3. Try running: ff (smart alias that works in any terminal)"
+        echo "  4. Add your own PNG/JPG images to ~/.config/fastfetch/logo/"
+        echo "  5. Images are auto-sized (30x18) with aspect ratio preserved"
         echo
         log_info "🗑️  To uninstall: ~/.local/bin/uninstall-fastfetch-setup.sh"
         echo
-        log_success "Enjoy your new HyDE-style terminal setup!"
+        log_success "Enjoy your new HyDE-style terminal setup with anime logos!"
     fi
     
     cleanup_temp
