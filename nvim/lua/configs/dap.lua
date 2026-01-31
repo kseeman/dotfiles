@@ -90,6 +90,33 @@ require("nvim-dap-virtual-text").setup({
   virt_text_win_col = nil
 })
 
+-- .NET DAP configuration
+dap.adapters.coreclr = {
+  type = 'executable',
+  command = vim.fn.stdpath('data') .. '/mason/packages/netcoredbg/netcoredbg',
+  args = {'--interpreter=vscode'}
+}
+
+dap.configurations.cs = {
+  {
+    type = "coreclr",
+    name = "launch - netcoredbg",
+    request = "launch",
+    program = function()
+      return vim.fn.input('Path to dll: ', vim.fn.getcwd() .. '/bin/Debug/', 'file')
+    end,
+  },
+  {
+    type = "coreclr",
+    name = "attach - netcoredbg",
+    request = "attach",
+    processId = require('dap.utils').pick_process,
+  },
+}
+
+-- F# uses the same configuration as C#
+dap.configurations.fsharp = dap.configurations.cs
+
 -- Java DAP configuration
 dap.configurations.java = {
   {

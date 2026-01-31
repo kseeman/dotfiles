@@ -31,6 +31,11 @@ map({ "n", "t" }, "<C-`>", function()
   require("nvchad.term").toggle { pos = "float", id = "floatTerm" }
 end, { desc = "terminal toggle floating term" })
 
+-- Alternative mapping for terminals that don't handle Ctrl+backtick properly (like Warp)
+map({ "n", "t" }, "<M-`>", function()
+  require("nvchad.term").toggle { pos = "float", id = "floatTerm" }
+end, { desc = "terminal toggle floating term (Alt+backtick)" })
+
 -- Note: <leader>ft mapping disabled because it causes Space key lag in terminal
 -- map({ "n", "t" }, "<leader>ft", function()
 --   require("nvchad.term").toggle { pos = "float", id = "floatTerm" }

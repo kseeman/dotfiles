@@ -16,10 +16,21 @@ M.base46 = {
 }
 
 -- M.nvdash = { load_on_startup = true }
--- M.ui = {
---       tabufline = {
---          lazyload = false
---      }
--- }
+
+-- Add profile to statusline
+M.ui = {
+  statusline = {
+    theme = "default",
+    separator_style = "default",
+    order = { "mode", "file", "git", "%=", "lsp_msg", "%=", "diagnostics", "profile", "lsp", "cwd", "cursor" },
+    modules = {
+      profile = function()
+        local profile_manager = require("profile-manager")
+        local current_profile = profile_manager.get_current_profile()
+        return "%#St_gitIcons#" .. "󰏗 " .. "%#St_LspHints#" .. current_profile:upper() .. " "
+      end,
+    },
+  },
+}
 
 return M

@@ -72,7 +72,8 @@ Inside nvim, use these commands:
 - **Documentation**: XML doc generation with Neogen
 - **Project Detection**: .sln, .csproj, .fsproj files
 - **Build Tools**: MSBuild integration
-- **Additional Plugins**: csharp.nvim, neotest-dotnet, omnisharp-extended-lsp
+- **Azure Functions**: Seamless debugging with automatic DAP integration
+- **Additional Plugins**: csharp.nvim, neotest-dotnet, omnisharp-extended-lsp, azfunc.nvim
 
 #### Java Profile  
 - **Languages**: Java, Kotlin, Groovy
@@ -113,6 +114,10 @@ Inside nvim, use these commands:
 
 ### Custom Test Runner
 Integrated test runner with language detection and execution.
+
+### Azure Functions (Dotnet Profile)
+- `<leader>as` - Start Azure Functions debugging
+- `<leader>aS` - Stop Azure Functions debugging
 
 ## File Structure
 ```

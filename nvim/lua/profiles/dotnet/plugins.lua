@@ -159,4 +159,21 @@ return {
       })
     end,
   },
+
+  -- Azure Functions debugging support
+  {
+    "fschaal/azfunc.nvim",
+    dependencies = {
+      "mfussenegger/nvim-dap",
+    },
+    ft = { "cs" },
+    config = function()
+      require("azfunc").setup({
+        mappings = {
+          start = "<leader>as",  -- Azure Functions start
+          stop = "<leader>aS",   -- Azure Functions stop
+        },
+      })
+    end,
+  },
 }
