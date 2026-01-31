@@ -36,6 +36,11 @@ return {
   {
     "nvim-tree/nvim-tree.lua",
     opts = {
+      view = {
+        width = function()
+          return math.floor(vim.o.columns * 0.15)
+        end,
+      },
       git = {
         enable = true,
         timeout = 5000, -- Increase from 400ms to 5 seconds for large repos
