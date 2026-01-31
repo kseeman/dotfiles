@@ -65,6 +65,19 @@ return {
     build = ":TSUpdate",
   },
 
+  -- .NET Nuget Manager
+  {
+    "d7omdev/nuget.nvim",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim",
+    },
+    cmd = { "NugetInstall", "NugetUpdate", "NugetRemove", "NugetSearch" },
+    config = function()
+      require("nuget").setup()
+    end,
+  }
+
   -- test new blink
   -- { import = "nvchad.blink.lazyspec" },
 
