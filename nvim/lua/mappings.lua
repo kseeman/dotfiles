@@ -94,3 +94,30 @@ map("n", "<leader>gp", function()
   vim.cmd("Gitsigns preview_hunk")
 end, { desc = "Git preview hunk" })
 
+-- Profile switching commands
+local profile_manager = require("profile-manager")
+
+-- Create user commands for profile management
+vim.api.nvim_create_user_command("ProfileSwitch", function()
+  profile_manager.switch_profile()
+end, { desc = "Switch nvim profile" })
+
+vim.api.nvim_create_user_command("ProfileRestart", function()
+  profile_manager.restart_with_profile()
+end, { desc = "Restart nvim with current profile" })
+
+vim.api.nvim_create_user_command("ProfileStatus", function()
+  local current = profile_manager.get_current_profile()
+  vim.notify("Current profile: " .. current, vim.log.levels.INFO)
+end, { desc = "Show current profile" })
+
+vim.api.nvim_create_user_command("ProfileClear", function()
+  profile_manager.clear_persisted_profile()
+end, { desc = "Clear persisted profile" })
+
+-- Profile switching keymaps
+map("n", "<leader>ps", ":ProfileSwitch<CR>", { desc = "Switch profile" })
+map("n", "<leader>pr", ":ProfileRestart<CR>", { desc = "Restart with profile" })
+map("n", "<leader>pi", ":ProfileStatus<CR>", { desc = "Profile info" })
+map("n", "<leader>pc", ":ProfileClear<CR>", { desc = "Clear saved profile" })
+

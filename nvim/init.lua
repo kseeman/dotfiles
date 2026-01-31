@@ -1,6 +1,11 @@
 vim.g.base46_cache = vim.fn.stdpath "data" .. "/base46/"
 vim.g.mapleader = " "
 
+-- Initialize profile system
+local profile_manager = require "profile-manager"
+local current_profile = profile_manager.get_current_profile()
+local profile_plugins = profile_manager.load_profile(current_profile)
+
 -- bootstrap lazy and all plugins
 local lazypath = vim.fn.stdpath "data" .. "/lazy/lazy.nvim"
 
@@ -13,7 +18,7 @@ vim.opt.rtp:prepend(lazypath)
 
 local lazy_config = require "configs.lazy"
 
--- load plugins
+-- load plugins with profile system
 require("lazy").setup({
   {
     "NvChad/NvChad",
@@ -22,7 +27,8 @@ require("lazy").setup({
     import = "nvchad.plugins",
   },
 
-  { import = "plugins" },
+  -- Load profile-specific plugins instead of generic plugins
+  profile_plugins,
 }, lazy_config)
 
 -- load theme
