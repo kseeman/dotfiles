@@ -126,3 +126,9 @@ map("n", "<leader>pr", ":ProfileRestart<CR>", { desc = "Restart with profile" })
 map("n", "<leader>pi", ":ProfileStatus<CR>", { desc = "Profile info" })
 map("n", "<leader>pc", ":ProfileClear<CR>", { desc = "Clear saved profile" })
 
+-- Load local/work-specific commands if they exist (git-ignored)
+local ok, local_commands = pcall(require, "local-commands")
+if ok then
+  local_commands.setup()
+end
+
