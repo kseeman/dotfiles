@@ -26,15 +26,10 @@ map("n", "<C-/>", "gcc", { desc = "Toggle line comment", remap = true })
 map("v", "<C-/>", "gc", { desc = "Toggle comment selection", remap = true })
 map("i", "<C-/>", "<ESC>gcca", { desc = "Toggle line comment in insert mode", remap = true })
 
--- Floating terminal toggle (alternative to Alt+i that works on macOS)
-map({ "n", "t" }, "<C-`>", function()
+-- Floating terminal toggle using F12 (works reliably on macOS)
+map({ "n", "t" }, "<F12>", function()
   require("nvchad.term").toggle { pos = "float", id = "floatTerm" }
 end, { desc = "terminal toggle floating term" })
-
--- Alternative mapping for terminals that don't handle Ctrl+backtick properly (like Warp)
-map({ "n", "t" }, "<M-`>", function()
-  require("nvchad.term").toggle { pos = "float", id = "floatTerm" }
-end, { desc = "terminal toggle floating term (Alt+backtick)" })
 
 -- Note: <leader>ft mapping disabled because it causes Space key lag in terminal
 -- map({ "n", "t" }, "<leader>ft", function()
