@@ -31,8 +31,31 @@ return {
     ft = "java",
     config = function()
       local jdtls = require('jdtls')
+      local profile_manager = require('profile-manager')
       local home = os.getenv('HOME')
       local workspace_dir = home .. '/.cache/jdtls/workspace/' .. vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')
+
+      -- Get OS-specific configuration directory name
+      local config_name = profile_manager.get_config_dir_name()
+
+      -- Find the jdtls launcher jar file
+      local jdtls_install = home .. '/.local/share/nvim/mason/packages/jdtls'
+      local launcher_jar = vim.fn.glob(jdtls_install .. '/plugins/org.eclipse.equinox.launcher_*.jar')
+      if launcher_jar == '' then
+        vim.notify('jdtls launcher jar not found', vim.log.levels.ERROR)
+        return
+      end
+
+      -- Get default capabilities from NvChad
+      local capabilities = require("nvchad.configs.lspconfig").capabilities
+
+      -- Setup LSP keymaps on attach
+      local on_attach = function(client, bufnr)
+        -- Load NvChad's default LSP keymaps (includes gd, gr, K, etc.)
+        require("nvchad.configs.lspconfig").on_attach(client, bufnr)
+
+        -- Add any Java-specific keymaps here if needed
+      end
 
       local config = {
         cmd = {
@@ -46,8 +69,8 @@ return {
           '--add-modules=ALL-SYSTEM',
           '--add-opens', 'java.base/java.util=ALL-UNNAMED',
           '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-          '-jar', home .. '/.local/share/nvim/mason/packages/jdtls/plugins/org.eclipse.equinox.launcher_*.jar',
-          '-configuration', home .. '/.local/share/nvim/mason/packages/jdtls/config_linux',
+          '-jar', launcher_jar,
+          '-configuration', jdtls_install .. '/' .. config_name,
           '-data', workspace_dir
         },
         root_dir = require('jdtls.setup').find_root({'.git', 'mvnw', 'gradlew', 'pom.xml', 'build.gradle'}),
@@ -105,6 +128,8 @@ return {
         init_options = {
           bundles = {}
         },
+        on_attach = on_attach,
+        capabilities = capabilities,
       }
       jdtls.start_or_attach(config)
     end,
@@ -230,12 +255,6 @@ return {
     config = function()
       require("spring_boot").setup()
     end,
-  },
-
-  -- Java syntax enhancements
-  {
-    "artur-shaik/vim-javacomplete2",
-    ft = "java",
   },
 
   -- Markdown rendering

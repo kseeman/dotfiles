@@ -29,11 +29,15 @@ end
 
 -- Custom on_attach function
 local on_attach = function(client, bufnr)
-  -- Setup manual highlighting keymaps
+  -- First call NvChad's default on_attach to set up standard LSP keymaps (gd, gr, K, etc.)
+  require("nvchad.configs.lspconfig").on_attach(client, bufnr)
+
+  -- Then setup our custom manual highlighting keymaps
   setup_lsp_keymaps(client, bufnr)
 end
 
-local servers = { "html", "cssls", "omnisharp", "ts_ls", "js_ls", "jdtls", "clangd" }
+-- Note: jdtls is NOT included here because nvim-jdtls plugin manages it separately
+local servers = { "html", "cssls", "omnisharp", "ts_ls", "js_ls", "clangd" }
 
 -- Configure each server with on_attach
 for _, server in ipairs(servers) do

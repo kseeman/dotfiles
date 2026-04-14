@@ -3,9 +3,47 @@ local M = {}
 -- Available profiles
 M.profiles = {
   "default",
-  "dotnet", 
+  "dotnet",
   "java"
 }
+
+-- Detect operating system
+function M.detect_os()
+  local system = vim.loop.os_uname().sysname
+  if system == 'Darwin' then
+    return 'mac'
+  elseif system:match('Windows') then
+    return 'windows'
+  else
+    return 'linux'
+  end
+end
+
+-- Detect CPU architecture
+function M.detect_arch()
+  local machine = vim.loop.os_uname().machine
+  -- arm64, aarch64, arm (Apple Silicon, ARM Linux)
+  if machine:match('arm') or machine:match('aarch64') then
+    return 'arm'
+  else
+    return 'x86_64'
+  end
+end
+
+-- Get OS-specific config name (for tools like jdtls)
+function M.get_config_dir_name()
+  local os = M.detect_os()
+  local arch = M.detect_arch()
+  local suffix = arch == 'arm' and '_arm' or ''
+
+  if os == 'mac' then
+    return 'config_mac' .. suffix
+  elseif os == 'windows' then
+    return 'config_win'  -- Windows doesn't have ARM suffix in jdtls
+  else
+    return 'config_linux' .. suffix
+  end
+end
 
 -- Get current profile name
 function M.get_current_profile()
