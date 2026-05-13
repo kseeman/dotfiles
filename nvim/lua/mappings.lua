@@ -115,6 +115,13 @@ vim.api.nvim_create_user_command("ProfileClear", function()
   profile_manager.clear_persisted_profile()
 end, { desc = "Clear persisted profile" })
 
+-- Copy file path to clipboard
+map("n", "<leader>fp", function()
+  local path = vim.fn.expand('%:p')
+  vim.fn.setreg('+', path)
+  vim.notify('Copied: ' .. path)
+end, { desc = "Copy file path to clipboard" })
+
 -- Profile switching keymaps
 map("n", "<leader>ps", ":ProfileSwitch<CR>", { desc = "Switch profile" })
 map("n", "<leader>pr", ":ProfileRestart<CR>", { desc = "Restart with profile" })
