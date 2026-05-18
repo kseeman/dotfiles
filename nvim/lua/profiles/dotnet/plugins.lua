@@ -1,30 +1,7 @@
+-- .NET profile.
+-- Universal specs (conform, lspconfig, dap, treesitter base, nvim-tree base,
+-- render-markdown, claude-code, tint) live in plugins/shared.lua.
 return {
-  -- Base formatting and LSP
-  {
-    "stevearc/conform.nvim",
-    opts = require "configs.conform",
-  },
-
-  {
-    "neovim/nvim-lspconfig",
-    config = function()
-      require "configs.lspconfig"
-    end,
-  },
-
-  -- Debug Adapter Protocol (DAP) for debugging
-  {
-    "mfussenegger/nvim-dap",
-    dependencies = {
-      "rcarriga/nvim-dap-ui",
-      "theHamsta/nvim-dap-virtual-text",
-      "nvim-neotest/nvim-nio",
-    },
-    config = function()
-      require "configs.dap"
-    end,
-  },
-
   -- .NET specific plugins
   {
     "Hoffs/omnisharp-extended-lsp.nvim",
@@ -34,7 +11,7 @@ return {
   {
     "iabdelkareem/csharp.nvim",
     dependencies = {
-      "williamboman/mason.nvim", 
+      "williamboman/mason.nvim",
       "mfussenegger/nvim-dap",
       "Tastyep/structlog.nvim",
     },
@@ -90,7 +67,7 @@ return {
     end,
   },
 
-  -- Enhanced Treesitter for .NET languages
+  -- Treesitter languages for the .NET profile
   {
     "nvim-treesitter/nvim-treesitter",
     opts = {
@@ -98,28 +75,13 @@ return {
         "c_sharp", "fsharp", "xml", "json", "yaml", "markdown",
         "lua", "bash", "dockerfile", "sql"
       },
-      highlight = { enable = true },
-      indent = { enable = true },
-      fold = { enable = true },
     },
-    build = ":TSUpdate",
   },
 
-  -- NvimTree for .NET projects
+  -- NvimTree ignore patterns for .NET projects
   {
     "nvim-tree/nvim-tree.lua",
     opts = {
-      view = {
-        width = function()
-          return math.floor(vim.o.columns * 0.15)
-        end,
-      },
-      git = {
-        enable = true,
-        timeout = 5000,
-        show_on_dirs = true,
-        show_on_open_dirs = false,
-      },
       filters = {
         custom = { "^.git$", "^node_modules$", "^bin$", "^obj$" },
       },
@@ -175,22 +137,5 @@ return {
         },
       })
     end,
-  },
-
-  -- Markdown rendering
-  {
-    "MeanderingProgrammer/render-markdown.nvim",
-    dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-tree/nvim-web-devicons" },
-    ft = "markdown",
-    opts = {},
-  },
-
-  -- Claude Code integration
-  {
-    "greggh/claude-code.nvim",
-    dependencies = { "nvim-lua/plenary.nvim" },
-    cmd = { "ClaudeCode", "ClaudeCodeContinue", "ClaudeCodeResume", "ClaudeCodeVerbose" },
-    keys = { { "<leader>cc", "<cmd>ClaudeCode<cr>", desc = "Toggle Claude Code" } },
-    opts = {},
   },
 }
