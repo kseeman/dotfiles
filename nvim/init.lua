@@ -29,6 +29,9 @@ require("lazy").setup({
 
   -- Load profile-specific plugins instead of generic plugins
   profile_plugins,
+
+  -- Plugins shared across all profiles (e.g. inactive-pane dimming)
+  { import = "plugins.shared" },
 }, lazy_config)
 
 -- load theme
