@@ -40,6 +40,55 @@ end, { desc = "terminal toggle floating term" })
 local test_runner = require("configs.test-runner")
 test_runner.setup()
 
+-- Manual format current buffer
+map({ "n", "v" }, "<leader>fm", function()
+  require("conform").format({ lsp_fallback = true, timeout_ms = 2000 })
+end, { desc = "Format buffer" })
+
+-- Reload config modules without restarting nvim
+vim.api.nvim_create_user_command("Reload", function(opts)
+  local targets = opts.fargs
+  if #targets == 0 then
+    targets = { "mappings" }
+  end
+
+  for _, target in ipairs(targets) do
+    if target == "conform" then
+      package.loaded["configs.conform"] = nil
+      require("conform").setup(require("configs.conform"))
+      vim.notify("Reloaded conform config", vim.log.levels.INFO)
+    elseif target == "mappings" then
+      package.loaded["mappings"] = nil
+      require("mappings")
+      vim.notify("Reloaded mappings", vim.log.levels.INFO)
+    elseif target == "local" then
+      package.loaded["local-commands"] = nil
+      local ok, lc = pcall(require, "local-commands")
+      if ok then
+        lc.setup()
+        vim.notify("Reloaded local-commands", vim.log.levels.INFO)
+      else
+        vim.notify("local-commands.lua not found", vim.log.levels.WARN)
+      end
+    else
+      local module = "configs." .. target
+      package.loaded[module] = nil
+      local ok, err = pcall(require, module)
+      if ok then
+        vim.notify("Reloaded " .. module, vim.log.levels.INFO)
+      else
+        vim.notify("Failed to reload " .. module .. ": " .. err, vim.log.levels.ERROR)
+      end
+    end
+  end
+end, {
+  nargs = "*",
+  complete = function()
+    return { "mappings", "conform", "local", "dap", "lspconfig", "test-runner" }
+  end,
+  desc = "Reload config: :Reload [mappings|conform|local|<configs.*>]",
+})
+
 -- map({ "n", "i", "v" }, "<C-s>", "<cmd> w <cr>")
 --
 map("n", "gI", vim.lsp.buf.implementation, {
