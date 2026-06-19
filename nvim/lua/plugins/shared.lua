@@ -76,6 +76,12 @@ return {
         width = function()
           return math.floor(vim.o.columns * 0.15)
         end,
+        preserve_window_proportions = true,
+      },
+      actions = {
+        open_file = {
+          resize_window = false,
+        },
       },
       git = {
         enable = true,
