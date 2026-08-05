@@ -1,0 +1,5 @@
+if [[ -r "$HOME/.dotfiles/zsh/bootstrap.zsh" ]]; then
+    source "$HOME/.dotfiles/zsh/bootstrap.zsh"
+else
+    echo "Missing dotfiles bootstrap configuration."
+fi
