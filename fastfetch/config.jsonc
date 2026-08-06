@@ -1,30 +1,160 @@
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
 
+  // Built-in Apple ASCII art. This is the fallback: in kitty,
+  // `run_fastfetch()` in zsh/functions.zsh overrides it with
+  // `--logo-type kitty-direct` and a random image from ~/Pictures/TermPhotos.
+  // Command-line flags win over this block, so the two don't conflict.
   "logo": {
-    "type": "kitty-icat",
-    "width": 30,
-    "height": 15
+    "type": "builtin",
+    "padding": {
+      "top": 1,
+      "right": 3
+    }
   },
 
   "display": {
-    "separator": " : "
+    "separator": " : ",
+    // Colored percentage numbers (green/yellow/red by threshold) rather than
+    // bars, e.g. "28.22 GiB / 32.00 GiB (88%)".
+    "percent": {
+      "type": 9
+    }
   },
 
   "modules": [
-    "title",
-    "separator",
-    "os",
-    "kernel",
-    "host",
-    "shell",
-    "terminal",
-    "cpu",
-    "gpu",
-    "memory",
-    "disk",
-    "uptime",
+    // ---------------------------------------------------------------------
+    // Title
+    // ---------------------------------------------------------------------
+    {
+      "type": "title",
+      "key": " ",
+      "format": "{user-name-colored}{at-symbol-colored} {host-name-colored}"
+    },
+
+    // ---------------------------------------------------------------------
+    // System
+    // ---------------------------------------------------------------------
+    // Rules are drawn with the separator module. `times` is set explicitly
+    // because auto-width (times: 0) sizes to the *title* line, which is
+    // shorter than the widest value line.
+    {
+      "type": "separator",
+      "string": "─",
+      "times": 44,
+      "outputColor": "white"
+    },
+    {
+      "type": "os",
+      "key": "󰀵 OS",
+      "keyColor": "yellow",
+      // The default includes the marketing name and build number
+      // ("macOS Tahoe 26.6 (25G72) arm64"); the target shows just
+      // "macOS arm64".
+      "format": "{name} {arch}"
+    },
+    {
+      "type": "kernel",
+      "key": " Kernel",
+      "keyColor": "yellow",
+      // {release} alone, since {sysname} would prefix a redundant "Darwin".
+      "format": "{release}"
+    },
+    {
+      "type": "packages",
+      "key": " Packages",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "display",
+      "key": "󰍹 Display",
+      "keyColor": "yellow",
+      // One line per monitor, each with its refresh rate.
+      "format": "{width}x{height} @ {refresh-rate}Hz"
+    },
+    {
+      "type": "terminal",
+      "key": " Terminal",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "shell",
+      "key": " Shell",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "separator",
+      "string": "─",
+      "times": 44,
+      "outputColor": "white"
+    },
+
     "break",
-    "colors"
+
+    // ---------------------------------------------------------------------
+    // Hardware
+    // ---------------------------------------------------------------------
+    {
+      "type": "custom",
+      "key": " ",
+      "format": "Hardware Information"
+    },
+    {
+      "type": "separator",
+      "string": "─",
+      "times": 44,
+      "outputColor": "white"
+    },
+    {
+      "type": "cpu",
+      "key": " CPU",
+      "keyColor": "cyan",
+      // Drop the core count and clock speed to match the target.
+      "format": "{name}"
+    },
+    {
+      "type": "gpu",
+      "key": "󰢮 GPU",
+      "keyColor": "cyan",
+      "format": "{vendor} {name}"
+    },
+    {
+      "type": "memory",
+      "key": " Memory",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "disk",
+      "key": " Storage",
+      "keyColor": "cyan",
+      // Only the boot volume. Without this, every mounted DMG and external
+      // volume gets its own line.
+      "folders": "/",
+      // Default appends the filesystem and "[Read-only]"; the target shows
+      // just the sizes and percentage.
+      "format": "{size-used} / {size-total} ({size-percentage})"
+    },
+    {
+      "type": "uptime",
+      "key": " Uptime",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "separator",
+      "string": "─",
+      "times": 44,
+      "outputColor": "white"
+    },
+
+    "break",
+
+    // ---------------------------------------------------------------------
+    // Palette swatches
+    // ---------------------------------------------------------------------
+    {
+      "type": "colors",
+      "symbol": "circle",
+      "paddingLeft": 2
+    }
   ]
 }

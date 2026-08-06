@@ -61,4 +61,7 @@ alias flex-claude='source ~/.claude.sh'
 # Terminal utilities
 # -----------------------------------------------------------------------------
 
-alias fastfetch='fastfetch --logo-type kitty'
+# Run fastfetch the same way the shell-startup banner does, so a manual
+# `fastfetch` also gets a random image from ~/Pictures/TermPhotos rather than
+# the built-in ASCII logo. `run_fastfetch` is defined in zsh/functions.zsh.
+alias fastfetch='run_fastfetch'
