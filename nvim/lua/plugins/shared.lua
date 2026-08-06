@@ -55,16 +55,47 @@ return {
     end,
   },
 
-  -- Treesitter: common settings. Each profile supplies its own
-  -- `opts.ensure_installed` list (disjoint from these keys).
+  -- Treesitter (`main` branch — the post-rewrite plugin, required for Neovim
+  -- 0.12). The old `master` branch is frozen for 0.11 and its
+  -- `set-lang-from-info-string!` query directive crashes on 0.12, since
+  -- directive handlers now receive a list of nodes per capture rather than a
+  -- single TSNode.
+  --
+  -- `main` no longer has modules, so there is no `highlight`/`indent`/`fold`
+  -- opts table. Those are Neovim features now and are enabled per-filetype in
+  -- `autocmds.lua`. Only `ensure_installed` remains, which each profile
+  -- supplies; NvChad's `:TSInstallAll` reads it off this spec.
+  --
+  -- `lazy = false` and no `event`: upstream states the plugin does not support
+  -- lazy-loading.
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      highlight = { enable = true },
-      indent = { enable = true },
-      fold = { enable = true },
-    },
+    branch = "main",
+    lazy = false,
+    event = false,
     build = ":TSUpdate",
+    config = function(_, opts)
+      require("nvim-treesitter").setup()
+
+      -- Install any configured parsers that aren't present yet. Async, so it
+      -- won't block startup; a no-op once they're all installed.
+      local installed = require("nvim-treesitter.config").get_installed "parsers"
+      local present = {}
+      for _, parser in ipairs(installed) do
+        present[parser] = true
+      end
+
+      local missing = {}
+      for _, parser in ipairs(opts.ensure_installed or {}) do
+        if not present[parser] then
+          table.insert(missing, parser)
+        end
+      end
+
+      if #missing > 0 then
+        require("nvim-treesitter").install(missing)
+      end
+    end,
   },
 
   -- NvimTree: common view/git settings. Profiles may add

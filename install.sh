@@ -38,6 +38,25 @@ run() {
     fi
 }
 
+link_config() {
+    local source="$1"
+    local target="$2"
+
+    if [[ ! -e "$source" ]]; then
+        echo "Missing source: $source"
+        return
+    fi
+
+    if [[ -e "$target" && ! -L "$target" ]]; then
+        local backup="${target}.backup.$(date +%Y%m%d%H%M%S)"
+
+        info "Backing up existing $(basename "$target")"
+        run "mv '$target' '$backup'"
+    fi
+
+    run "ln -sfn '$source' '$target'"
+}
+
 # -----------------------------------------------------------------------------
 # Validate environment
 # -----------------------------------------------------------------------------
@@ -54,6 +73,11 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     exit 1
 fi
 
+if [[ "$(uname -m)" != "arm64" ]]; then
+    echo "This installer expects an Apple Silicon Mac."
+    exit 1
+fi
+
 # -----------------------------------------------------------------------------
 # Homebrew
 # -----------------------------------------------------------------------------
@@ -66,7 +90,7 @@ fi
 
 if [[ ! -x "/opt/homebrew/bin/brew" ]]; then
     echo "Homebrew was not found at /opt/homebrew/bin/brew"
-    echo "This installer expects an Apple Silicon Mac."
+    echo "This installer expects Apple Silicon Homebrew."
     exit 1
 fi
 
@@ -82,6 +106,20 @@ if [[ -f "$DOTFILES_DIR/Brewfile" ]]; then
     run "brew bundle --file '$DOTFILES_DIR/Brewfile'"
 else
     echo "No Brewfile found, skipping Homebrew packages."
+fi
+
+# -----------------------------------------------------------------------------
+# Dependency check
+# -----------------------------------------------------------------------------
+
+if [[ -x "$DOTFILES_DIR/zsh/dependencies.zsh" ]]; then
+    info "Checking dependencies..."
+
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "[dry-run] $DOTFILES_DIR/zsh/dependencies.zsh"
+    else
+        "$DOTFILES_DIR/zsh/dependencies.zsh"
+    fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -164,43 +202,76 @@ run "ln -sfn '$DOTFILES_DIR' '$HOME/.dotfiles'"
 
 info "Linking ~/.zshrc..."
 
-if [[ -e "$HOME/.zshrc" && ! -L "$HOME/.zshrc" ]]; then
-    backup="$HOME/.zshrc.backup.$(date +%Y%m%d%H%M%S)"
-
-    info "Backing up existing ~/.zshrc"
-    run "mv '$HOME/.zshrc' '$backup'"
-fi
-
-run "ln -sfn '$DOTFILES_DIR/zsh/zshrc' '$HOME/.zshrc'"
+link_config \
+    "$HOME/.dotfiles/zsh/zshrc" \
+    "$HOME/.zshrc"
 
 # -----------------------------------------------------------------------------
-# Dependency check
+# Kitty configuration
 # -----------------------------------------------------------------------------
 
-if [[ -x "$DOTFILES_DIR/zsh/dependencies.zsh" ]]; then
-    info "Checking dependencies..."
+info "Configuring Kitty..."
+
+mkdir -p "$HOME/.config/kitty"
+
+link_config \
+    "$HOME/.dotfiles/kitty/kitty.conf" \
+    "$HOME/.config/kitty/kitty.conf"
+
+link_config \
+    "$HOME/.dotfiles/kitty/theme.conf" \
+    "$HOME/.config/kitty/theme.conf"
+
+# -----------------------------------------------------------------------------
+# Fastfetch configuration
+# -----------------------------------------------------------------------------
+
+info "Configuring Fastfetch..."
+
+mkdir -p "$HOME/.config/fastfetch"
+
+link_config \
+    "$HOME/.dotfiles/fastfetch/config.jsonc" \
+    "$HOME/.config/fastfetch/config.jsonc"
+
+# -----------------------------------------------------------------------------
+# User configuration reminder
+# -----------------------------------------------------------------------------
+
+info "Checking ~/.userconfig..."
+
+if [[ ! -d "$HOME/.userconfig" ]]; then
+    mkdir -p "$HOME/.userconfig/zsh/extensions"
+    mkdir -p "$HOME/.userconfig/zsh/secrets"
 
     if [[ "$DRY_RUN" == true ]]; then
-        echo "[dry-run] $DOTFILES_DIR/zsh/dependencies.zsh"
+        echo "[dry-run] create ~/.userconfig structure"
     else
-        "$DOTFILES_DIR/zsh/dependencies.zsh"
+        cat > "$HOME/.userconfig/README.md" <<EOF
+# Local User Configuration
+
+This directory is intentionally not managed by dotfiles.
+
+Use:
+
+~/.userconfig/zsh/local.zsh
+    Machine-specific configuration
+
+~/.userconfig/zsh/extensions/
+    Work/project shell extensions
+
+~/.userconfig/zsh/secrets/
+    Private environment variables and credentials
+
+Do not commit this directory.
+EOF
     fi
-fi
 
-# -----------------------------------------------------------------------------
-# Private configuration reminder
-# -----------------------------------------------------------------------------
-
-if [[ ! -d "$HOME/.userconfig/zsh" ]]; then
     echo ""
-    echo "Reminder:"
-    echo "  Create ~/.userconfig/zsh for machine-specific configuration."
-    echo ""
-    echo "Suggested structure:"
-    echo "  ~/.userconfig/zsh/"
-    echo "  ├── local.zsh"
-    echo "  ├── extensions/"
-    echo "  └── secrets/"
+    echo "Created ~/.userconfig structure."
+    echo "Add private or machine-specific configuration there."
+else
+    echo "~/.userconfig already exists."
 fi
 
 # -----------------------------------------------------------------------------
@@ -211,3 +282,9 @@ echo ""
 echo "======================================"
 echo " Dotfiles installation complete!"
 echo "======================================"
+echo ""
+echo "Next steps:"
+echo "  1. Restart your terminal"
+echo "  2. Open Kitty for the full terminal experience"
+echo "  3. Add machine-specific settings to ~/.userconfig"
+echo ""
