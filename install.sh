@@ -216,6 +216,29 @@ link_config \
     "$HOME/.config/nvim"
 
 # -----------------------------------------------------------------------------
+# tmux configuration
+# -----------------------------------------------------------------------------
+
+# The config itself is shared; only clipboard integration differs per platform.
+# The OS fragment is linked to os.conf, which tmux.conf sources at its end.
+#
+# The -f test reads the repo path rather than ~/.dotfiles so it still evaluates
+# correctly during a dry run, when that symlink may not exist yet.
+info "Linking tmux configuration..."
+
+run "mkdir -p '$HOME/.config/tmux'"
+
+link_config \
+    "$HOME/.dotfiles/tmux/tmux.conf" \
+    "$HOME/.config/tmux/tmux.conf"
+
+if [[ -f "$OS_DIR/tmux.conf" ]]; then
+    link_config \
+        "$HOME/.dotfiles/os/$DOTFILES_OS/tmux.conf" \
+        "$HOME/.config/tmux/os.conf"
+fi
+
+# -----------------------------------------------------------------------------
 # OS-specific configuration links
 # -----------------------------------------------------------------------------
 

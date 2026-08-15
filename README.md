@@ -24,6 +24,7 @@ lib/os.sh          OS detection, shared by the installer and zsh
 install.sh         Shared install steps; dispatches to the OS installer
 zsh/               Shared shell configuration
 kitty/ fastfetch/  Config sources (linked per-OS — see below)
+tmux/              Shared tmux config (clipboard bits in os/<os>/tmux.conf)
 nvim/              NvChad-based config with a multi-profile system
 os/macos/          Brewfile, install steps, macOS-only zsh
 os/linux/          pacman.txt, aur.txt, install steps, Linux-only zsh
@@ -104,6 +105,25 @@ hydectl theme set "Custom"
 See `os/linux/hyde-themes/README.md` for how to add another, and why theme text
 files are symlinked but wallpapers are copied — HyDE's `find -H` discovery makes
 that mandatory, not a preference.
+
+## tmux
+
+`tmux/tmux.conf` is shared and linked to `~/.config/tmux/tmux.conf`. Clipboard
+integration is the one platform-specific part — `wl-copy` on Linux, `pbcopy` on
+macOS — and lives in `os/<os>/tmux.conf`, linked to `~/.config/tmux/os.conf` and
+sourced at the end of the shared config.
+
+The prefix stays at the default `C-b`, so every tutorial applies and it behaves
+the same on machines you SSH into. Press `C-b r` to reload after editing, and
+`C-b ?` to list every binding.
+
+| Key | |
+|-----|-|
+| `C-b \|` / `C-b -` | split left-right / top-bottom, in the current directory |
+| `C-b h j k l` | move between panes |
+| `C-b H J K L` | resize (repeatable — hold prefix once) |
+| `C-b z` | zoom a pane (toggle) |
+| `C-b [` | copy mode; `v` select, `y` yank to system clipboard |
 
 ## Machine-specific configuration
 

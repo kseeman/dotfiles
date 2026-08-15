@@ -15,6 +15,7 @@ lib/os.sh              OS detection, shared by install.sh (bash) and zsh
 install.sh             Shared install steps; dispatches to the OS installer
 zsh/                   Shared shell configuration
 kitty/ fastfetch/      Shared config sources (linked per-OS, see below)
+tmux/                  Shared tmux config; OS fragment in os/<os>/tmux.conf
 nvim/                  Shared; already cross-platform via profile-manager.lua
 os/macos/              Brewfile, install.sh, zsh/{exports,aliases}.zsh
 os/linux/              pacman.txt, aur.txt, install.sh, zsh/{exports,aliases}.zsh
@@ -52,6 +53,23 @@ Deliberately split: Node versions live in `$NVM_DIR` (`~/.nvm`) on both platform
 **On Linux this matters:** HyDE (the Hyprland desktop) generates and owns `~/.config/kitty` and `~/.config/fastfetch`, rewriting them on every theme switch — `kitty.conf` does `include hyde.conf`, and the Fastfetch logo comes from a theme-aware `fastfetch.sh logo` call. `os/linux/install.sh` detects HyDE (via `hyde-shell`/`hydectl`/`~/.config/kitty/hyde.conf`) and skips linking both, preserving the existing desktop setup. Without HyDE it links them normally. macOS always links them, since nothing else claims those directories there.
 
 The Fastfetch startup banner still runs on Linux; it just renders with HyDE's config. `run_fastfetch` in `zsh/functions.zsh` points at `~/.config/fastfetch/config.jsonc`, whichever config that happens to be.
+
+### tmux
+
+`tmux/tmux.conf` is shared and linked to `~/.config/tmux/tmux.conf` by the shared installer. The only genuinely platform-specific part is clipboard integration, which lives in `os/<os>/tmux.conf`, is linked to `~/.config/tmux/os.conf`, and is pulled in by `source-file -q` at the end of the shared config. The `-q` keeps `tmux.conf` usable standalone.
+
+This inverts the usual pattern: rather than the OS file loading first, tmux sources it **last**, because a `bind` simply replaces any earlier binding. So `y` in copy mode is bound to `wl-copy` on Linux and `pbcopy` on macOS, overriding nothing else.
+
+The prefix is deliberately left at the default `C-b` — the config is written for someone learning tmux, where matching every tutorial and working unchanged over SSH matters more than ergonomics.
+
+Two settings are load-bearing for Neovim and should not be removed: `escape-time 10` (the 500ms default makes `Esc` feel broken in nvim) and `focus-events on` (nvim's autoread). Colors are left to the terminal palette rather than hardcoded, so the status bar follows whatever HyDE theme is active.
+
+Validate config changes without touching a live session by using a separate socket:
+
+```sh
+tmux -L cfgtest -f ~/.config/tmux/tmux.conf new-session -d && \
+  tmux -L cfgtest list-keys -T prefix; tmux -L cfgtest kill-server
+```
 
 ### Hyprland user configuration (Linux)
 

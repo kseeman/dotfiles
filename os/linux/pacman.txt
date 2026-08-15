@@ -16,6 +16,7 @@ bat
 ripgrep
 jq
 tree
+tmux
 
 # nvm ships as scripts under /usr/share/nvm rather than a binary; the path is
 # wired up in os/linux/zsh/exports.zsh. Node versions still install to ~/.nvm.
