@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+
+# -----------------------------------------------------------------------------
+# tmux-sessionizer
+# -----------------------------------------------------------------------------
+#
+# Pick a project directory and attach to a tmux session named after it, creating
+# it if needed. One session per project, so switching projects is one keystroke
+# rather than a hunt through window numbers.
+#
+#   tmux-sessionizer            pick interactively with fzf
+#   tmux-sessionizer ~/Repos/x  jump straight to that directory
+#
+# Bound to prefix + f in tmux.conf, and on PATH via ~/.local/bin.
+
+set -euo pipefail
+
+# Where projects live. Roots that don't exist are skipped, so this list is safe
+# to share between machines — note that on Linux these are case-sensitive, so
+# ~/Repos and ~/repos are different directories and both are listed.
+#
+# Each root is searched exactly DEPTH levels down, so a nested layout needs the
+# containing directory listed as its own root rather than a deeper DEPTH:
+# ~/repos/projects/<project> means listing ~/repos/projects, otherwise the only
+# result would be a single "projects" entry.
+SEARCH_PATHS=(
+    "$HOME/Repos"
+    "$HOME/repos"
+    "$HOME/repos/projects"
+    "$HOME/dotfiles"
+)
+
+# Machine-specific roots belong here rather than in the list above: one path per
+# line, blank lines and # comments ignored, ~ expanded. ~/.userconfig is not
+# tracked by this repo, which is where anything machine-specific lives.
+USER_PATHS_FILE="$HOME/.userconfig/tmux/sessionizer-paths"
+
+if [[ -r "$USER_PATHS_FILE" ]]; then
+    while IFS= read -r line; do
+        line="${line%%#*}"
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
+
+        [[ -n "$line" ]] && SEARCH_PATHS+=("${line/#\~/$HOME}")
+    done < "$USER_PATHS_FILE"
+fi
+
+# How deep below each search path a project sits. Kept at 1 so results are the
+# project directories themselves, not their contents.
+DEPTH=1
+
+is_search_root() {
+    local candidate="$1" root
+    for root in "${SEARCH_PATHS[@]}"; do
+        [[ "$candidate" == "$root" ]] && return 0
+    done
+    return 1
+}
+
+find_projects() {
+    local path child
+    for path in "${SEARCH_PATHS[@]}"; do
+        [[ -d "$path" ]] || continue
+
+        # The path itself counts as a project when it is a repo (~/dotfiles),
+        # otherwise list its children.
+        if [[ -d "$path/.git" ]]; then
+            echo "$path"
+            continue
+        fi
+
+        while IFS= read -r child; do
+            # Skip a child that is itself a configured root: it's a container
+            # that contributes its own children, so listing it too would offer a
+            # useless "projects" session alongside the real ones.
+            is_search_root "$child" || echo "$child"
+        done < <(find "$path" -mindepth 1 -maxdepth "$DEPTH" -type d 2>/dev/null)
+    done
+}
+
+if [[ $# -eq 1 ]]; then
+    selected="$1"
+else
+    selected="$(find_projects | sort -u | fzf --reverse --prompt='project> ')"
+fi
+
+# Empty when fzf is cancelled with Esc or C-c.
+[[ -n "${selected:-}" ]] || exit 0
+
+# tmux treats dots as host/port separators in target names, so they must go.
+selected_name="$(basename "$selected" | tr '. ' '__')"
+
+# Start a detached session if one isn't already running under that name. Guarded
+# because `tmux has-session` fails when no server is running at all.
+if ! tmux has-session -t="$selected_name" 2>/dev/null; then
+    tmux new-session -ds "$selected_name" -c "$selected"
+fi
+
+if [[ -z "${TMUX:-}" ]]; then
+    # Outside tmux: attach normally.
+    tmux attach-session -t "$selected_name"
+else
+    # Already inside tmux, where attaching would nest. Switch instead.
+    tmux switch-client -t "$selected_name"
+fi

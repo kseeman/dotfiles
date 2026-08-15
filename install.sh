@@ -238,6 +238,34 @@ if [[ -f "$OS_DIR/tmux.conf" ]]; then
         "$HOME/.config/tmux/os.conf"
 fi
 
+# The sessionizer is bound to prefix + f, and put on PATH so it also works from
+# a plain shell. ~/.local/bin is already exported in zsh/exports.zsh.
+run "mkdir -p '$HOME/.local/bin'"
+
+link_config \
+    "$HOME/.dotfiles/tmux/scripts/tmux-sessionizer" \
+    "$HOME/.local/bin/tmux-sessionizer"
+
+# -----------------------------------------------------------------------------
+# tmux plugins
+# -----------------------------------------------------------------------------
+
+# tpm manages tmux-resurrect and tmux-continuum, declared at the end of
+# tmux.conf. Plugins live under ~/.config/tmux/plugins, which is a real
+# directory outside this repo, so nothing needs gitignoring.
+#
+# Cloning only bootstraps tpm itself; press prefix + I inside tmux to install
+# the plugins it manages.
+TPM_DIR="$HOME/.config/tmux/plugins/tpm"
+
+if [[ ! -d "$TPM_DIR" ]]; then
+    info "Installing tmux plugin manager..."
+
+    run "git clone --depth 1 https://github.com/tmux-plugins/tpm '$TPM_DIR'"
+else
+    info "tmux plugin manager already installed."
+fi
+
 # -----------------------------------------------------------------------------
 # OS-specific configuration links
 # -----------------------------------------------------------------------------

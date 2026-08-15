@@ -231,6 +231,36 @@ install_hypr_configs() {
     done
 }
 
+# -----------------------------------------------------------------------------
+# Wallbash templates
+# -----------------------------------------------------------------------------
+
+# Templates that let HyDE recolour extra applications from the current
+# wallpaper. Each .dcol declares its own output path on its header line; the
+# tmux one writes ~/.config/tmux/wallbash.conf, which tmux.conf sources.
+#
+# Copied rather than linked: wallbash finds templates with
+# `find -H … -type f`, which does not follow symlinks, so a symlinked template
+# is invisible — the same constraint as theme wallpapers. Re-run the installer
+# after editing a template.
+install_wallbash_templates() {
+    local src="$DOTFILES_DIR/os/linux/wallbash"
+    local dest="$HOME/.config/hyde/wallbash/always"
+
+    [[ -d "$src" ]] || return 0
+
+    if ! compgen -G "$src/*.dcol" >/dev/null; then
+        return 0
+    fi
+
+    info "Installing wallbash templates..."
+
+    run "mkdir -p '$dest'"
+    run "cp -u '$src/'*.dcol '$dest/'"
+
+    echo "Applied on the next theme or wallpaper change."
+}
+
 # Called by the shared installer after the ~/.dotfiles symlink exists.
 os_link_configs() {
     # Additive and HyDE-independent: these are user-tier files that HyDE seeds
@@ -241,6 +271,9 @@ os_link_configs() {
         # Additive: theme directories HyDE doesn't own and won't overwrite, so
         # they install even though the desktop configs below are left alone.
         install_hyde_themes
+
+        # Wallbash only exists with HyDE, so this belongs in this branch.
+        install_wallbash_templates
 
         info "Skipping Kitty and Fastfetch configuration..."
 

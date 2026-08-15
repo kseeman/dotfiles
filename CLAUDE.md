@@ -71,6 +71,34 @@ tmux -L cfgtest -f ~/.config/tmux/tmux.conf new-session -d && \
   tmux -L cfgtest list-keys -T prefix; tmux -L cfgtest kill-server
 ```
 
+#### Plugins
+
+Managed by tpm, cloned by `install.sh` into `~/.config/tmux/plugins/` — a real directory outside the repo, so nothing needs gitignoring. `tmux-resurrect` saves/restores sessions, `tmux-continuum` drives it on a 15-minute timer and restores on server start.
+
+`TMUX_PLUGIN_MANAGER_PATH` is deliberately **not** set. tpm derives `<xdg>/tmux/plugins` itself when it finds `tmux.conf` under XDG, and setting it in the config would actively break things — tmux does not expand `~` in `set-environment`, so the literal tilde path fails to resolve.
+
+The `run '…/tpm'` line must stay last; tpm only sees plugins declared above it.
+
+Installing plugins needs a server with the config loaded. From outside a session:
+
+```sh
+tmux -L boot -f ~/.config/tmux/tmux.conf new-session -d
+tmux -L boot run-shell '~/.config/tmux/plugins/tpm/bin/install_plugins'
+tmux -L boot kill-server
+```
+
+#### Session management
+
+`tmux/scripts/tmux-sessionizer` fuzzy-finds a project under the `SEARCH_PATHS` array (currently `~/Repos` and `~/dotfiles`) and attaches to a session named after it, creating it if needed. Bound to `prefix + f` and linked into `~/.local/bin`, so it works from a plain shell too. It handles being run both inside tmux (`switch-client`) and outside (`attach-session`), and strips dots from session names since tmux treats them as host/port separators.
+
+#### Wallbash theming (Linux)
+
+`os/linux/wallbash/tmux.dcol` is a wallbash template that regenerates `~/.config/tmux/wallbash.conf` from the current wallpaper on every theme, wallpaper or mode change, then re-sources it into any running server via its header-line command. `tmux.conf` sources it with `-q`, so macOS and non-HyDE machines fall back to the plain terminal-palette styling.
+
+It is **copied**, not symlinked, into `~/.config/hyde/wallbash/always/` by `install_wallbash_templates()`. Wallbash finds templates with `find -H … -type f`, which does not follow symlinks — the same constraint as theme wallpapers. Re-run the installer after editing the template.
+
+The template sets styles only; `tmux.conf` owns formats and layout. Keeping that split is what lets colors be regenerated without touching the bar's structure.
+
 ### Hyprland user configuration (Linux)
 
 `os/linux/hypr/` holds the user-tier Hyprland files, linked into `~/.config/hypr/` by `install_hypr_configs()` — the list is the `HYPR_USER_CONFIGS` array: `userprefs.conf`, `keybindings.conf`, `windowrules.conf`.

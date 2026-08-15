@@ -125,6 +125,35 @@ the same on machines you SSH into. Press `C-b r` to reload after editing, and
 | `C-b z` | zoom a pane (toggle) |
 | `C-b [` | copy mode; `v` select, `y` yank to system clipboard |
 
+### Sessions
+
+One session per project. `C-b f` fuzzy-finds a project under `~/Repos` (and
+`~/dotfiles`) and switches to a session named after it, creating it if needed.
+The same script is on `PATH` as `tmux-sessionizer`, so it works from a plain
+shell. Edit `SEARCH_PATHS` in `tmux/scripts/tmux-sessionizer` to add roots.
+
+| Key | |
+|-----|-|
+| `C-b f` | fuzzy-find a project → session |
+| `C-b S` | session tree |
+| `C-b Space` | previous session |
+| `C-b C-s` / `C-b C-r` | save / restore sessions by hand |
+
+Sessions are saved automatically every 15 minutes by tmux-continuum and
+restored when the tmux server starts, so a reboot doesn't cost you your
+workspace. To start clean instead, set `@continuum-restore` to `off`.
+
+Plugins are managed by tpm, which `install.sh` clones. Press `C-b I` inside
+tmux to install them, `C-b U` to update.
+
+### Theming
+
+On Linux with HyDE, the status bar colors are generated from your current
+wallpaper — `os/linux/wallbash/tmux.dcol` regenerates
+`~/.config/tmux/wallbash.conf` on every theme or wallpaper change, and tmux
+picks it up immediately. Elsewhere tmux falls back to the terminal's own
+palette, so the config stays portable.
+
 ## Machine-specific configuration
 
 `~/.userconfig` is never tracked here, and is sourced at the end of shell
