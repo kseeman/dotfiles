@@ -1,0 +1,6 @@
+# AUR package manifest, installed with paru (or yay) by os/linux/install.sh.
+# One package per line; blank lines and # comments ignored.
+#
+# Nothing here yet — every tool in the current setup is available in the
+# official repos. Prefer pacman.txt; only add here when a package genuinely
+# isn't in extra/core, since AUR builds are slower and less reliable.

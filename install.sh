@@ -9,6 +9,9 @@ set -euo pipefail
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=false
 
+# Set by the OS-specific installer sourced below.
+NVM_SH=""
+
 # -----------------------------------------------------------------------------
 # Arguments
 # -----------------------------------------------------------------------------
@@ -68,45 +71,31 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "Running in dry-run mode. No changes will be made."
 fi
 
-if [[ "$OSTYPE" != "darwin"* ]]; then
-    echo "This installer currently supports macOS only."
+source "$DOTFILES_DIR/lib/os.sh"
+
+DOTFILES_OS="$(dotfiles_detect_os)"
+DOTFILES_DISTRO="$(dotfiles_detect_distro)"
+
+OS_DIR="$DOTFILES_DIR/os/$DOTFILES_OS"
+
+if [[ ! -d "$OS_DIR" ]]; then
+    echo "Unsupported operating system: $(uname -s)"
+    echo "Add an os/<name> directory to support it."
     exit 1
 fi
 
-if [[ "$(uname -m)" != "arm64" ]]; then
-    echo "This installer expects an Apple Silicon Mac."
-    exit 1
-fi
+echo "Detected: $DOTFILES_OS${DOTFILES_DISTRO:+ ($DOTFILES_DISTRO)}"
 
 # -----------------------------------------------------------------------------
-# Homebrew
+# OS-specific setup
 # -----------------------------------------------------------------------------
 
-if ! command -v brew &>/dev/null; then
-    info "Installing Homebrew..."
+# Sourced rather than executed so it inherits DRY_RUN and the helpers above,
+# and can hand NVM_SH plus an optional os_link_configs() hook back to the
+# shared steps below.
+info "Running $DOTFILES_OS setup..."
 
-    run '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
-fi
-
-if [[ ! -x "/opt/homebrew/bin/brew" ]]; then
-    echo "Homebrew was not found at /opt/homebrew/bin/brew"
-    echo "This installer expects Apple Silicon Homebrew."
-    exit 1
-fi
-
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
-# -----------------------------------------------------------------------------
-# Brew packages
-# -----------------------------------------------------------------------------
-
-if [[ -f "$DOTFILES_DIR/Brewfile" ]]; then
-    info "Installing Homebrew packages..."
-
-    run "brew bundle --file '$DOTFILES_DIR/Brewfile'"
-else
-    echo "No Brewfile found, skipping Homebrew packages."
-fi
+source "$OS_DIR/install.sh"
 
 # -----------------------------------------------------------------------------
 # Dependency check
@@ -128,22 +117,28 @@ fi
 
 info "Configuring NVM..."
 
-mkdir -p "$HOME/.nvm"
+# Node versions live here on every OS; only the location of nvm.sh differs,
+# which is why the OS installer sets NVM_SH.
+run "mkdir -p '$HOME/.nvm'"
 
-if [[ "$DRY_RUN" == true ]]; then
-    echo "[dry-run] source $(brew --prefix nvm)/nvm.sh"
+if [[ -z "$NVM_SH" ]]; then
+    echo "No NVM_SH set by the $DOTFILES_OS installer, skipping Node setup."
+elif [[ "$DRY_RUN" == true ]]; then
+    echo "[dry-run] source $NVM_SH"
     echo "[dry-run] nvm install --lts"
     echo "[dry-run] nvm alias default lts/*"
+elif [[ ! -s "$NVM_SH" ]]; then
+    echo "nvm.sh not found at $NVM_SH, skipping Node setup."
 else
     export NVM_DIR="$HOME/.nvm"
 
-    source "$(brew --prefix nvm)/nvm.sh"
+    source "$NVM_SH"
 
     if ! nvm ls --lts &>/dev/null; then
         echo "Installing Node LTS..."
 
         nvm install --lts
-        nvm alias default lts/*
+        nvm alias default 'lts/*'
     else
         echo "Node LTS already installed."
     fi
@@ -207,32 +202,30 @@ link_config \
     "$HOME/.zshrc"
 
 # -----------------------------------------------------------------------------
-# Kitty configuration
+# Neovim configuration
 # -----------------------------------------------------------------------------
 
-info "Configuring Kitty..."
+# Shared: nvim/ is already cross-platform via profile-manager.lua, so the whole
+# directory is linked on every OS.
+info "Linking ~/.config/nvim..."
 
-mkdir -p "$HOME/.config/kitty"
-
-link_config \
-    "$HOME/.dotfiles/kitty/kitty.conf" \
-    "$HOME/.config/kitty/kitty.conf"
+run "mkdir -p '$HOME/.config'"
 
 link_config \
-    "$HOME/.dotfiles/kitty/theme.conf" \
-    "$HOME/.config/kitty/theme.conf"
+    "$HOME/.dotfiles/nvim" \
+    "$HOME/.config/nvim"
 
 # -----------------------------------------------------------------------------
-# Fastfetch configuration
+# OS-specific configuration links
 # -----------------------------------------------------------------------------
 
-info "Configuring Fastfetch..."
-
-mkdir -p "$HOME/.config/fastfetch"
-
-link_config \
-    "$HOME/.dotfiles/fastfetch/config.jsonc" \
-    "$HOME/.config/fastfetch/config.jsonc"
+# Which desktop configs get linked is itself platform-specific: on macOS this
+# repo owns Kitty and Fastfetch, while on a Linux desktop those directories may
+# already belong to the desktop environment. Each OS installer decides, and runs
+# here — after the ~/.dotfiles symlink the link targets depend on.
+if declare -F os_link_configs >/dev/null; then
+    os_link_configs
+fi
 
 # -----------------------------------------------------------------------------
 # User configuration reminder
@@ -241,12 +234,12 @@ link_config \
 info "Checking ~/.userconfig..."
 
 if [[ ! -d "$HOME/.userconfig" ]]; then
-    mkdir -p "$HOME/.userconfig/zsh/extensions"
-    mkdir -p "$HOME/.userconfig/zsh/secrets"
-
     if [[ "$DRY_RUN" == true ]]; then
         echo "[dry-run] create ~/.userconfig structure"
     else
+        mkdir -p "$HOME/.userconfig/zsh/extensions"
+        mkdir -p "$HOME/.userconfig/zsh/secrets"
+
         cat > "$HOME/.userconfig/README.md" <<EOF
 # Local User Configuration
 
@@ -265,11 +258,11 @@ Use:
 
 Do not commit this directory.
 EOF
-    fi
 
-    echo ""
-    echo "Created ~/.userconfig structure."
-    echo "Add private or machine-specific configuration there."
+        echo ""
+        echo "Created ~/.userconfig structure."
+        echo "Add private or machine-specific configuration there."
+    fi
 else
     echo "~/.userconfig already exists."
 fi

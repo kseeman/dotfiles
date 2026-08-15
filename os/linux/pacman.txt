@@ -1,0 +1,82 @@
+# Arch package manifest, mirroring os/macos/Brewfile — keep the two in sync
+# when adding a tool. One package per line; blank lines and # comments ignored.
+#
+# Installed with: pacman -S --needed
+# AUR packages belong in aur.txt instead.
+
+git
+neovim
+# Required by nvim-treesitter's main branch to generate parsers. Must come from
+# a package manager, NOT npm (per upstream requirements).
+tree-sitter-cli
+fzf
+zoxide
+fastfetch
+bat
+ripgrep
+jq
+tree
+
+# nvm ships as scripts under /usr/share/nvm rather than a binary; the path is
+# wired up in os/linux/zsh/exports.zsh. Node versions still install to ~/.nvm.
+nvm
+
+# Pulls in the system nodejs, which shadows nvm-managed node on PATH only if
+# nvm isn't loaded. Same trade-off as `brew "pnpm"` on macOS.
+pnpm
+
+# Terminal. kitty/kitty.conf is linked by install.sh and expects the
+# CaskaydiaCove Nerd Font family, which ttf-cascadia-code-nerd provides.
+kitty
+ttf-cascadia-code-nerd
+
+
+# -----------------------------------------------------------------------------
+# Hyprland desktop
+# -----------------------------------------------------------------------------
+#
+# Only the macOS-side tools above have Brewfile counterparts; everything below
+# is Linux-only by nature.
+#
+# HyDE's own installer also pulls most of these in. Listing them anyway means a
+# Linux machine reaches a working Hyprland session without HyDE, and documents
+# what the tracked hypr/ configs actually depend on. `pacman -S --needed` makes
+# the overlap a no-op.
+#
+# NOT listed on purpose:
+#   pipewire-*, power-profiles-daemon  system plumbing CachyOS provides and this
+#                                      repo never configures
+#   hyprquery-git, hyprland-guiutils   HyDE dependencies — its installer's job
+#                                      (and hyprquery-git is chaotic-aur, not a
+#                                      standard Arch repo)
+#   dolphin and other applications     app choices with no configuration here
+
+# Session core
+hyprland
+hyprlock
+hypridle
+waybar
+rofi
+dunst
+sddm
+polkit-gnome
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+
+# Wayland utilities
+grim
+slurp
+hyprshot
+hyprpicker
+hyprsunset
+cliphist
+wl-clip-persist
+nwg-displays
+nwg-look
+
+# Qt/GTK theming. Themes under os/linux/hyde-themes/ ship a kvantum/ directory,
+# and HyDE points qt5ct/qt6ct at the active theme.
+kvantum
+kvantum-qt5
+qt5ct
+qt6ct

@@ -4,7 +4,100 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Purpose
 
-This is a personal dotfiles repository containing a Neovim configuration built on NvChad v2.5. The configuration features a custom multi-profile system that loads different plugin sets and configurations based on the development environment (default, .NET, or Java).
+This is a personal dotfiles repository covering Neovim, zsh, and terminal configuration across macOS and Linux. The Neovim configuration is built on NvChad v2.5 and features a custom multi-profile system that loads different plugin sets and configurations based on the development environment (default, .NET, or Java).
+
+## Cross-Platform Structure
+
+The repo supports macOS (Apple Silicon) and Arch-based Linux from one tree. Shared configuration lives at the top level; anything that genuinely differs per platform lives under `os/<os>/`.
+
+```
+lib/os.sh              OS detection, shared by install.sh (bash) and zsh
+install.sh             Shared install steps; dispatches to the OS installer
+zsh/                   Shared shell configuration
+kitty/ fastfetch/      Shared config sources (linked per-OS, see below)
+nvim/                  Shared; already cross-platform via profile-manager.lua
+os/macos/              Brewfile, install.sh, zsh/{exports,aliases}.zsh
+os/linux/              pacman.txt, aur.txt, install.sh, zsh/{exports,aliases}.zsh
+os/linux/hypr/         User-tier Hyprland config (see below)
+os/linux/hyde-themes/  Hand-authored HyDE themes, one dir each (see below)
+```
+
+### Detection
+
+`lib/os.sh` is the single source of truth and must stay **POSIX sh** — it is sourced by both bash (`install.sh`) and zsh (`zsh/bootstrap.zsh`). It exports:
+
+- `DOTFILES_OS` — `macos` or `linux`
+- `DOTFILES_DISTRO` — normalized to a *family* (`arch`, `debian`, `fedora`), so derivatives resolve to the package manager they actually use. CachyOS reports `arch`.
+
+`dotfiles_detect_distro()` reads `/etc/os-release` in a subshell on purpose; sourcing it directly would leak `ID`/`NAME`/`VERSION` into every interactive shell.
+
+### Shell load order
+
+`zsh/init.zsh` sources `os/$DOTFILES_OS/zsh/{exports,aliases,functions}.zsh` **before** the shared files.
+
+OS files own what differs — package-manager paths, `NVM_SH`, `JAVA_HOME`, the `ls` color flag — and shared files read those. **A shared file must never redefine something an OS file owns.** That one rule keeps load order significant in a single direction; violating it makes the ordering load-bearing in both, which is how these setups become unpredictable.
+
+### Adding a package
+
+Add it to **both** `os/macos/Brewfile` and `os/linux/pacman.txt` — they are parallel manifests and drift silently otherwise. AUR-only packages go in `os/linux/aur.txt` (installed via `paru`, falling back to `yay`).
+
+### NVM
+
+Deliberately split: Node versions live in `$NVM_DIR` (`~/.nvm`) on both platforms, but `nvm.sh` itself is at `/opt/homebrew/opt/nvm/nvm.sh` on macOS and `/usr/share/nvm/nvm.sh` on Arch. The OS files set `NVM_SH`/`NVM_COMPLETION`; shared code just sources whatever they point at. `nvm` is a shell function, not a binary, so `command -v nvm` cannot be used to check for it.
+
+### Which configs get linked is per-OS
+
+`install.sh` links what is universally shared (`~/.dotfiles`, `~/.zshrc`, `~/.config/nvim` — `nvim/` is already cross-platform via `profile-manager.lua`). Each OS installer may define an `os_link_configs()` hook, called after the `~/.dotfiles` symlink exists, for everything else.
+
+**On Linux this matters:** HyDE (the Hyprland desktop) generates and owns `~/.config/kitty` and `~/.config/fastfetch`, rewriting them on every theme switch — `kitty.conf` does `include hyde.conf`, and the Fastfetch logo comes from a theme-aware `fastfetch.sh logo` call. `os/linux/install.sh` detects HyDE (via `hyde-shell`/`hydectl`/`~/.config/kitty/hyde.conf`) and skips linking both, preserving the existing desktop setup. Without HyDE it links them normally. macOS always links them, since nothing else claims those directories there.
+
+The Fastfetch startup banner still runs on Linux; it just renders with HyDE's config. `run_fastfetch` in `zsh/functions.zsh` points at `~/.config/fastfetch/config.jsonc`, whichever config that happens to be.
+
+### Hyprland user configuration (Linux)
+
+`os/linux/hypr/` holds the user-tier Hyprland files, linked into `~/.config/hypr/` by `install_hypr_configs()` — the list is the `HYPR_USER_CONFIGS` array: `userprefs.conf`, `keybindings.conf`, `windowrules.conf`, `workspaces.conf`.
+
+These are safe to own because HyDE seeds but never rewrites them; its generated output goes to `~/.config/hypr/themes/` instead. Linking is HyDE-independent — it happens whether or not HyDE is installed.
+
+`monitors.conf` and `nvidia.conf` are **deliberately excluded** as hardware-specific; they would be wrong on any other machine.
+
+Remember the precedence rule when editing `userprefs.conf`: `hyprland.conf` sources it *last*, so it outranks the active theme. Keep structure and behaviour there and leave colors/gaps/rounding/blur to the theme, or theme switching will look half-applied.
+
+**Hazard — HyDE updates can write through these symlinks.** HyDE's `restore.config.sh` deploys with `cp -r`/`cp -rf`, and a plain copy onto a symlink writes through to the target rather than replacing the link. A HyDE update can therefore overwrite the tracked files *inside this repo* while the symlinks still look correct. Installing HyDE before the dotfiles avoids it; otherwise check `git status os/linux/hypr` after any HyDE update and `git checkout --` to restore. This is the main reason these files are worth tracking in git at all.
+
+### HyDE themes (Linux)
+
+`os/linux/hyde-themes/` holds hand-authored HyDE themes, one directory each. `install_hyde_themes()` in `os/linux/install.sh` loops over them and installs each to `~/.config/hyde/themes/<name>`.
+
+**The directory name is the theme name** — that's how HyDE identifies a theme, so no name is hardcoded anywhere. Adding a theme means adding a directory; renaming is a `git mv` plus deleting the stale `~/.config/hyde/themes/<old-name>` by hand, since the installer only adds.
+
+Which files get symlinked is controlled by the `HYDE_THEME_LINKABLE` array; extend it if a theme needs a file type not yet listed. An optional `.sort` file (first line, a number, default `0`) orders the theme in the switcher — shipped themes use `1`–`12` and the sort is ascending, so custom themes appear first by default; a negative value pins one to the top.
+
+Unlike Kitty/Fastfetch, this is **additive** — a directory HyDE doesn't own and never overwrites — so it installs whenever HyDE is present, regardless of the desktop-config skip. Without HyDE it isn't installed at all, since nothing would consume it.
+
+**The symlink/copy split is forced by HyDE, not a style choice.** Discovery uses `find -H`, which does not follow symlinks encountered during traversal, so a symlink is `-type l` — never `-type d` or `-type f`:
+
+| Path | Must be | Mechanism |
+|------|---------|-----------|
+| `themes/<name>/` | real directory | `get_themes()` uses `find -H … -maxdepth 1 -type d` |
+| `wallpapers/` + images | real directory, **copied** files | `get_hashmap()` uses `find -H … -type f` |
+| `*.theme`, `kvantum/` | may be symlinks | read by path (`-r`), which follows symlinks |
+
+Get this wrong and there is no error — the theme simply never appears in the switcher. A theme with **no wallpaper at all is skipped entirely** by `get_themes()`, which is why one image is committed.
+
+Consequences worth knowing:
+
+- Editing a `.theme` file in the repo edits the live theme. Adding a wallpaper requires re-running the installer to copy it.
+- HyDE writes `wall.set` and `wall.{swww,hyprlock,awww}.png` into the installed directory as wallpapers change. Because that directory is real rather than a symlink to the repo, this state never reaches the repo and **no `.gitignore` entries are needed**.
+- `get_themes()` self-heals a missing or dangling `wall.set` by relinking it to the first wallpaper it finds.
+
+### Adding a new OS or distro
+
+1. Create `os/<name>/` with `install.sh` and `zsh/`
+2. Have the installer install packages, set `NVM_SH`, and optionally define `os_link_configs()`
+3. Extend `dotfiles_detect_os()` / `dotfiles_detect_distro()` in `lib/os.sh`
+
+The OS installer is **sourced, not executed**, so it inherits `DOTFILES_DIR`, `DRY_RUN`, `info()`, `run()`, and `link_config()` — and hands `NVM_SH` back.
 
 ## Profile System Architecture
 

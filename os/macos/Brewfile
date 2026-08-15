@@ -1,3 +1,6 @@
+# macOS package manifest. The Linux equivalents live in os/linux/pacman.txt —
+# keep the two lists in sync when adding a tool.
+
 brew "git"
 brew "neovim"
 # Required by nvim-treesitter's main branch to generate parsers. Must come from
@@ -12,3 +15,8 @@ brew "jq"
 brew "nvm"
 brew "pnpm"
 brew "tree"
+
+# Terminal. kitty/kitty.conf is linked by install.sh and expects the
+# CaskaydiaCove Nerd Font family.
+cask "kitty"
+cask "font-caskaydia-cove-nerd-font"

@@ -1,14 +1,12 @@
+# Shared aliases. Anything platform-specific — the `ls` color flag, package
+# manager commands, Finder tweaks — belongs in os/<os>/zsh/aliases.zsh, which is
+# sourced before this file. Nothing here may shadow an alias an OS file owns.
+
 # -----------------------------------------------------------------------------
 # File system
 # -----------------------------------------------------------------------------
 
-# Colored ls
-if [[ -x /usr/local/bin/gls ]]; then
-    alias ls='gls --color=auto'
-elif [[ "$OSTYPE" == darwin* ]]; then
-    alias ls='ls -G'
-fi
-
+# `ls` itself is aliased per-OS; these build on whatever it resolved to.
 alias ll='ls -lah'
 alias la='ls -A'
 
@@ -38,16 +36,6 @@ alias gp='git push'
 # -----------------------------------------------------------------------------
 
 alias vim='nvim'
-
-
-# -----------------------------------------------------------------------------
-# macOS
-# -----------------------------------------------------------------------------
-
-alias brew-update='brew update && brew upgrade && brew cleanup'
-
-alias show-hidden='defaults write com.apple.finder AppleShowAllFiles YES; killall Finder'
-alias hide-hidden='defaults write com.apple.finder AppleShowAllFiles NO; killall Finder'
 
 
 # -----------------------------------------------------------------------------

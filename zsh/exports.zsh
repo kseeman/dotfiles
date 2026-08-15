@@ -1,3 +1,7 @@
+# Shared environment. Anything platform-specific — Homebrew paths, JAVA_HOME,
+# where nvm.sh lives — belongs in os/<os>/zsh/exports.zsh, which is sourced
+# before this file.
+
 # Default applications
 export EDITOR=nvim
 export VISUAL=nvim
@@ -6,36 +10,25 @@ export PAGER=less
 # User binaries
 export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
 
-# Homebrew
-export PATH="/opt/homebrew/bin:$PATH"
-export PATH="/opt/homebrew/sbin:$PATH"
-
 # -----------------------------------------------------------------------------
 # Node Version Manager
 # -----------------------------------------------------------------------------
 
+# Node versions live under $NVM_DIR on every platform; only the location of the
+# nvm.sh script itself differs (Homebrew keg on macOS, /usr/share on Arch), so
+# NVM_SH and NVM_COMPLETION are set by os/<os>/zsh/exports.zsh.
 export NVM_DIR="$HOME/.nvm"
 
-if [[ -s "$NVM_DIR/nvm.sh" ]]; then
-    source "$NVM_DIR/nvm.sh"
+if [[ -n "${NVM_SH:-}" && -s "$NVM_SH" ]]; then
+    source "$NVM_SH"
 fi
 
-if [[ -s "$NVM_DIR/bash_completion" ]]; then
-    source "$NVM_DIR/bash_completion"
+if [[ -n "${NVM_COMPLETION:-}" && -s "$NVM_COMPLETION" ]]; then
+    source "$NVM_COMPLETION"
 fi
-
-# Java
-export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-export PATH="$JAVA_HOME/bin:$PATH"
-
-# PostgreSQL
-export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
 
 # Dotnet tools
 export PATH="$PATH:$HOME/.dotnet/tools"
-
-# Local binaries
-export PATH="$HOME/.local/bin:$PATH"
 
 # Neovim
 export PATH="$HOME/.local/nvim/bin:$PATH"
