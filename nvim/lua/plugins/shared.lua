@@ -263,4 +263,51 @@ return {
       })
     end,
   },
+
+  -- HTTP client. Runs `.http` files (the JetBrains/REST Client format) and
+  -- shows the response in a split.
+  --
+  -- Three external requirements, all already in the package manifests:
+  -- `curl` (fetches the kulala-core backend on first run), `git`, and
+  -- `tree-sitter-cli`. The CLI is a hard requirement, not an optional extra —
+  -- kulala ships its own `kulala_http` grammar and generates the parser
+  -- locally rather than downloading a prebuilt one.
+  --
+  -- That grammar is deliberately kulala's own, so `treesitter.enable` is left
+  -- at its default `true` and "http" stays OUT of nvim-treesitter's
+  -- `ensure_installed` in the profile specs. The two parsers are different;
+  -- installing nvim-treesitter's would only shadow kulala's queries.
+  --
+  -- `ft` is narrowed to http/rest. Upstream also lists javascript/typescript/
+  -- lua so its LSP attaches to external `*.http.{js,ts,lua}` scripts, but
+  -- those filetypes are far too broad to lazy-load on here — and by the time
+  -- such a script is open, kulala has loaded from the `.http` file that
+  -- references it.
+  {
+    "mistweaverco/kulala.nvim",
+    ft = { "http", "rest" },
+    -- Bodyless `keys` entries are lazy.nvim load triggers only; kulala
+    -- installs the real mappings itself on setup, and the key is replayed
+    -- against them.
+    --
+    -- This list is exactly kulala's five *unrestricted* global keymaps. The
+    -- other ~16 carry `ft = { "http", "rest" }` in its keymap table, so they
+    -- only ever exist in an http buffer — which `ft` above already covers.
+    -- Listing one of those here would load the plugin on a keypress that then
+    -- resolves to nothing.
+    keys = {
+      { "<leader>Ro", desc = "Kulala open" },
+      { "<leader>Rb", desc = "Kulala scratchpad" },
+      { "<leader>Rs", desc = "Kulala send request" },
+      { "<leader>Ra", desc = "Kulala send all requests" },
+      { "<leader>Rr", desc = "Kulala replay last request" },
+    },
+    opts = {
+      -- Off upstream by default. Enabling it gives the full ~20-key set under
+      -- `<leader>R`, which collides with nothing here — `<leader>r` is the
+      -- test runner and `<leader>d` is DAP/dadbod.
+      global_keymaps = true,
+      global_keymaps_prefix = "<leader>R",
+    },
+  },
 }
