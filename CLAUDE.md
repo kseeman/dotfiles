@@ -99,6 +99,69 @@ It is **copied**, not symlinked, into `~/.config/hyde/wallbash/always/` by `inst
 
 The template sets styles only; `tmux.conf` owns formats and layout. Keeping that split is what lets colors be regenerated without touching the bar's structure.
 
+### Claude Code harness
+
+`claude/` is a self-contained Claude Code configuration installed into
+`~/.claude` by the shared installer. It is shared across platforms — nothing in
+it is OS-specific, so there is no `os/` counterpart.
+
+**This repo is public, and that constraint shapes the whole design.**
+`~/.claude` is a live state directory holding session transcripts,
+`.credentials.json`, plugin state, and the per-project memory Claude writes
+under `projects/`. It is therefore **never linked as a whole**. Only four known-
+safe paths are symlinked in (`CLAUDE.md`, `agents/`, `skills/`, `hooks/`), so
+anything Claude Code creates later stays outside the repo by construction rather
+than by remembering to gitignore it.
+
+The invariant, stated in `claude/CLAUDE.md` so Claude enforces it too: **this
+harness describes how the user works, never what they are working on.** No
+project or product names, hostnames, domains, organisation names, infrastructure
+details, or filesystem paths belong in any file under `claude/`. Project
+knowledge goes in that project's own `CLAUDE.md` / `.claude/`, which this repo
+does not track.
+
+**`settings.json` is merged, not symlinked** — the one asymmetry, and the reason
+`merge_json_config()` exists in `install.sh`. Every other file in the harness is
+written only by the user, so a symlink is right. `settings.json` is also written
+by *Claude Code itself*: plugin toggles, `/config`, and the auto-mode classifier
+all rewrite it, and the `autoMode.environment` block it maintains records
+organisation name, cloud providers, internal domains, and protected production
+namespaces. Through a symlink that would land in a public repo automatically,
+unprompted.
+
+So the installer runs `jq -s '.[0] * .[1]' <local> <repo>`: repo values win,
+local-only keys (`enabledPlugins`, `extraKnownMarketplaces`, `autoMode`) survive,
+and the result is idempotent. The consequence to remember: **editing
+`claude/settings.json` requires re-running `./install.sh`.** Everything else in
+`claude/` is live on save.
+
+The function also replaces the target if it finds a symlink there, since a
+symlink would make the merge write into the repo — the exact failure it exists
+to prevent.
+
+Two details that are load-bearing:
+
+- `claude/agents/researcher.md` declares `tools: Read, Grep, Glob` with no
+  `Bash`. Read-only is enforced by the tool list, not by prompt instruction.
+  Adding `Bash` to it silently removes that guarantee.
+- Both hooks require `jq` (already in both package manifests) and must exit 0
+  on every path. `protect-git.sh` fails open when `jq` is absent, because the
+  `ask` rules in `settings.json` are the second layer; `verify-task.sh` honours
+  `stop_hook_active`, without which a `Stop` hook loops.
+
+`protect-git.sh` splits commands on shell separators and strips `sudo`,
+`env FOO=bar`, and git's global options (`-C`, `-c`, `--git-dir`) before
+matching — that is what makes a chained destructive command catchable, which a
+prefix-matching permission rule cannot do. **The split must stay quote-aware:** a
+separator inside quotes does not start a new command, and without that rule any
+command merely quoting a destructive git string (a grep pattern, a JSON payload,
+this very documentation) invents a segment beginning with `git` and is refused.
+
+Every `git worktree` subcommand is deliberately left alone, so `claude -w <name>`
+workflows are never blocked.
+
+See `claude/README.md` for the agent/skill/hook reference and how to add more.
+
 ### Hyprland user configuration (Linux)
 
 `os/linux/hypr/` holds the user-tier Hyprland files, linked into `~/.config/hypr/` by `install_hypr_configs()` — the list is the `HYPR_USER_CONFIGS` array: `userprefs.conf`, `keybindings.conf`, `windowrules.conf`.

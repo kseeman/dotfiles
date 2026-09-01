@@ -25,6 +25,7 @@ install.sh         Shared install steps; dispatches to the OS installer
 zsh/               Shared shell configuration
 kitty/ fastfetch/  Config sources (linked per-OS — see below)
 tmux/              Shared tmux config (clipboard bits in os/<os>/tmux.conf)
+claude/            Claude Code harness (CLAUDE.md, agents, skills, hooks)
 nvim/              NvChad-based config with a multi-profile system
 os/macos/          Brewfile, install steps, macOS-only zsh
 os/linux/          pacman.txt, aur.txt, install steps, Linux-only zsh
@@ -153,6 +154,31 @@ wallpaper — `os/linux/wallbash/tmux.dcol` regenerates
 `~/.config/tmux/wallbash.conf` on every theme or wallpaper change, and tmux
 picks it up immediately. Elsewhere tmux falls back to the terminal's own
 palette, so the config stays portable.
+
+## Claude Code
+
+`claude/` holds a small, reusable Claude Code harness — global instructions,
+three subagents, four skills, and two hooks that block destructive git commands
+and surface the working tree at the end of a turn.
+
+This repo is public, so `~/.claude` is **never** linked as a whole: it holds
+session transcripts, credentials, plugin state, and the per-project memory
+Claude writes under `projects/`. Only the four generic paths below are linked,
+and `settings.json` is *merged* rather than symlinked, because Claude Code
+writes to that file itself and the auto-mode block it maintains records
+organisation and infrastructure details.
+
+```
+~/.claude/CLAUDE.md  agents/  skills/  hooks/   symlinked to this repo
+~/.claude/settings.json                         merged at install time
+everything else, and ~/.claude.json             stays private, never tracked
+```
+
+The rule this enforces: **the harness may describe how I work, never what I am
+working on.** No project names, hostnames, domains, org names, or paths.
+
+Changing a permission or hook means editing `claude/settings.json` and re-running
+`./install.sh`; everything else is live on save. See `claude/README.md`.
 
 ## Machine-specific configuration
 

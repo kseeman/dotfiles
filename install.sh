@@ -60,6 +60,77 @@ link_config() {
     run "ln -sfn '$source' '$target'"
 }
 
+# settings.json is the one file in the Claude harness that Claude Code writes to
+# itself — plugin enablement, auto-mode classifier state, absolute marketplace
+# paths. Symlinking it would feed that machine-local state straight into this
+# public repo, with no prompt. So it is merged rather than linked: the repo's
+# keys win, and any key only the local install knows about survives.
+#
+# The tradeoff: edit the repo copy and re-run this installer. Changes made
+# through /config land locally and are overwritten on the next run.
+merge_json_config() {
+    local source="$1"
+    local target="$2"
+
+    if [[ ! -f "$source" ]]; then
+        echo "Missing source: $source"
+        return
+    fi
+
+    if [[ ! -f "$target" ]]; then
+        run "cp '$source' '$target'"
+        return
+    fi
+
+    if ! command -v jq &>/dev/null; then
+        echo "jq not found, leaving $(basename "$target") alone."
+        return
+    fi
+
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "[dry-run] merge $source into $target"
+        return
+    fi
+
+    # A leftover symlink would make the merge below write into the repo, which
+    # is the exact thing this function exists to prevent.
+    if [[ -L "$target" ]]; then
+        echo "Replacing symlinked $(basename "$target") with a real file."
+
+        rm "$target"
+        cp "$source" "$target"
+
+        return
+    fi
+
+    local merged
+    merged="$(mktemp)"
+
+    # Local first, repo second, so repo values win and local-only keys survive.
+    if ! jq -s '.[0] * .[1]' "$target" "$source" > "$merged" 2>/dev/null; then
+        rm -f "$merged"
+
+        echo "Could not parse $target as JSON, leaving it alone."
+
+        return
+    fi
+
+    if cmp -s "$merged" "$target"; then
+        rm -f "$merged"
+
+        echo "Already up to date."
+
+        return
+    fi
+
+    local backup="${target}.backup.$(date +%Y%m%d%H%M%S)"
+
+    cp "$target" "$backup"
+    mv "$merged" "$target"
+
+    echo "Merged. Previous version saved as $(basename "$backup")"
+}
+
 # -----------------------------------------------------------------------------
 # Validate environment
 # -----------------------------------------------------------------------------
@@ -214,6 +285,41 @@ run "mkdir -p '$HOME/.config'"
 link_config \
     "$HOME/.dotfiles/nvim" \
     "$HOME/.config/nvim"
+
+# -----------------------------------------------------------------------------
+# Claude Code configuration
+# -----------------------------------------------------------------------------
+
+# ~/.claude is a live state directory — sessions, history, credentials, and the
+# per-project memory Claude writes under projects/ — so it is never linked as a
+# whole. Only the curated, generic harness below is linked, which keeps
+# everything Claude generates outside this repository. This repo is public;
+# claude/README.md explains the boundary and what must never cross it.
+info "Linking Claude Code configuration..."
+
+run "mkdir -p '$HOME/.claude'"
+
+link_config \
+    "$HOME/.dotfiles/claude/CLAUDE.md" \
+    "$HOME/.claude/CLAUDE.md"
+
+link_config \
+    "$HOME/.dotfiles/claude/agents" \
+    "$HOME/.claude/agents"
+
+link_config \
+    "$HOME/.dotfiles/claude/skills" \
+    "$HOME/.claude/skills"
+
+link_config \
+    "$HOME/.dotfiles/claude/hooks" \
+    "$HOME/.claude/hooks"
+
+# Merged, not linked — see merge_json_config. Read from the repo path rather
+# than ~/.dotfiles so a dry run works before that symlink exists.
+merge_json_config \
+    "$DOTFILES_DIR/claude/settings.json" \
+    "$HOME/.claude/settings.json"
 
 # -----------------------------------------------------------------------------
 # tmux configuration

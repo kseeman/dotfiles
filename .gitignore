@@ -1,2 +1,7 @@
 .DS_STORE
 nvim/lua/local-commands.lua
+
+# Claude Code: local-only config must never land in this public repo
+claude/**/*.local.*
+claude/settings.local.json
+claude/**/.credentials.json
