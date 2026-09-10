@@ -92,16 +92,41 @@ require("nvim-dap-virtual-text").setup({
 
 -- .NET DAP configuration.
 --
--- Point at `mason/bin`, not into `mason/packages/netcoredbg/`. The package's
--- internal layout is a registry detail — netcoredbg currently unpacks to
--- `libexec/netcoredbg/netcoredbg` and only works via a generated wrapper at the
--- package root. `mason/bin` is the stable name and survives a registry change.
+-- Mason is the default source, via `mason/bin` rather than into
+-- `mason/packages/netcoredbg/`. The package's internal layout is a registry
+-- detail — netcoredbg unpacks to `libexec/netcoredbg/netcoredbg` and only works
+-- through a generated wrapper at the package root. `mason/bin` is the stable
+-- name and survives a registry change.
 --
--- An absolute path is required: NvChad sets mason's `PATH = "skip"`, so
--- `mason/bin` is never added to $PATH and `exepath()` would not resolve this.
+-- An absolute path is required either way: NvChad sets mason's `PATH = "skip"`,
+-- so `mason/bin` is never added to $PATH and `exepath()` would not resolve it.
+--
+-- `~/.local/opt/netcoredbg` overrides that when present, which is how Apple
+-- Silicon gets a working debugger. mason-registry pins netcoredbg to 3.1.3-1062
+-- and maps *both* darwin targets to `netcoredbg-osx-amd64.tar.gz` — 3.1.3 had no
+-- osx-arm64 asset — so on an arm64 Mac mason installs an x86_64 binary that runs
+-- under Rosetta. It launches and reports a version quite happily; the failure
+-- only appears when it tries to load the arm64 DAC out of an arm64 debuggee, as
+-- `configurationDone` returning 0x80131c3c (CORDBG_E_DEBUG_COMPONENT_MISSING).
+-- A version check will not catch this — only a real attach does.
+--
+-- 3.2.0-1092 ships `netcoredbg-osx-arm64.zip`; `os/macos/install.sh` puts it in
+-- the override directory. Linux x86_64 is unaffected and keeps using mason.
+--
+-- Once mason-registry bumps the pin and splits the darwin targets, delete the
+-- override directory and this resolver collapses back to the mason path.
+local function netcoredbg_command()
+  local override = vim.fn.expand '~/.local/opt/netcoredbg/netcoredbg'
+  if vim.fn.executable(override) == 1 then
+    return override
+  end
+
+  return vim.fn.stdpath 'data' .. '/mason/bin/netcoredbg'
+end
+
 dap.adapters.coreclr = {
   type = 'executable',
-  command = vim.fn.stdpath('data') .. '/mason/bin/netcoredbg',
+  command = netcoredbg_command(),
   args = {'--interpreter=vscode'}
 }
 

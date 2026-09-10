@@ -189,7 +189,8 @@ nvim                      # For default profile
 #### For .NET Profile
 - .NET SDK
 - omnisharp-roslyn language server (installed via Mason)
-- netcoredbg debugger (installed via Mason)
+- netcoredbg debugger (Mason on Linux; `~/.local/opt` on Apple Silicon — see
+  [SETUP_DOTNET_DEBUGGING.md](SETUP_DOTNET_DEBUGGING.md))
 
 #### For Java Profile
 - JDK 17+

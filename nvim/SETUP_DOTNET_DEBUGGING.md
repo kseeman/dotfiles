@@ -1,91 +1,109 @@
 # .NET Debugging Setup
 
-## Install netcoredbg Debugger
+## The debugger
 
-You need to install the `netcoredbg` debugger for .NET debugging support. Here are your options:
+Debugging goes through `netcoredbg`, wired up as the `coreclr` DAP adapter in
+`nvim/lua/configs/dap.lua`. Both `azfunc.nvim` and the manual
+`attach - netcoredbg` configuration route through that one adapter.
 
-### Option 1: Install via Mason (Recommended)
+**Nothing needs installing by hand.** Where it comes from depends on the
+platform, and `dap.lua` resolves between the two at startup:
 
-1. Start nvim with dotnet profile:
-   ```bash
-   NVIM_PROFILE=dotnet nvim
-   ```
+| Platform | Source | Installed by |
+|----------|--------|--------------|
+| Linux x86_64 | Mason | the .NET profile's `ensure_installed` |
+| macOS arm64 | `~/.local/opt/netcoredbg` | `os/macos/install.sh` |
 
-2. Open Mason:
-   ```vim
-   :Mason
-   ```
+On Linux, opening nvim in the .NET profile installs the Mason package if it is
+missing — see `ensure_installed` in `nvim/lua/profiles/dotnet/plugins.lua`. On
+macOS, `./install.sh` fetches the debugger. `~/.local/opt` wins whenever it
+exists; otherwise the adapter falls back to `mason/bin/netcoredbg`.
 
-3. Search for and install `netcoredbg`:
-   - Press `/` and search for "netcoredbg"
-   - Press `i` to install it
+### Why macOS bypasses Mason
 
-### Option 2: Install manually
+mason-registry pins netcoredbg to `3.1.3-1062` and maps **both** darwin targets
+to `netcoredbg-osx-amd64.tar.gz`, because 3.1.3 shipped no osx-arm64 asset. On
+an Apple Silicon Mac that installs an x86_64 binary which runs under Rosetta and
+cannot load the arm64 DAC out of an arm64 debuggee. Every attach fails at
+`configurationDone` with `0x80131c3c` (`CORDBG_E_DEBUG_COMPONENT_MISSING`).
 
-If Mason doesn't have netcoredbg available, install it manually:
+`:MasonUpdate` does not help — the pin is the problem — and installing into the
+Mason package directory by hand gets clobbered by the next update. Hence
+`~/.local/opt`, which Mason does not manage. The version installed there is
+`3.2.0-1092`, the first release with `netcoredbg-osx-arm64.zip`.
+
+The download also needs `xattr -dr com.apple.quarantine` and an ad-hoc
+`codesign`; the installer does both.
+
+**This is temporary.** Once mason-registry bumps the pin and splits the darwin
+targets, delete `~/.local/opt/netcoredbg` and everything falls back to Mason
+with no config change.
+
+## Verifying
+
+`netcoredbg --version` proves **nothing** — the broken x86_64 build starts and
+reports its version perfectly happily. The architecture mismatch only surfaces
+on a real attach. Check the architecture instead:
 
 ```bash
-# Create directory
-mkdir -p ~/.local/share/nvim/mason/packages/netcoredbg
-
-# Download and extract netcoredbg (adjust URL for your architecture)
-cd ~/.local/share/nvim/mason/packages/netcoredbg
-wget https://github.com/Samsung/netcoredbg/releases/download/3.1.0-1031/netcoredbg-linux-amd64.tar.gz
-tar -xzf netcoredbg-linux-amd64.tar.gz
-rm netcoredbg-linux-amd64.tar.gz
+# must match `uname -m`
+file "$(nvim --headless -c 'lua io.write(require("dap").adapters.coreclr.command)' -c qa 2>/dev/null)"
 ```
 
-## Verify Installation
+To confirm the adapter is resolving where you expect:
 
-After installation, verify the debugger is available:
-
-```bash
-ls ~/.local/share/nvim/mason/packages/netcoredbg/
+```vim
+:lua print(require("dap").adapters.coreclr.command)
 ```
-
-You should see the `netcoredbg` executable.
 
 ## Usage
-
-Once installed, you can:
 
 1. **Set breakpoints**: `<F9>` or `<leader>db`
 2. **Start debugging**: `<F5>`
 3. **Step through code**: `<F1>` (step into), `<F2>` (step over), `<F3>` (step out)
 4. **Toggle DAP UI**: `<F7>`
 
-### Azure Functions Debugging
+### Azure Functions
 
-With netcoredbg installed, the azfunc.nvim plugin will work:
-
-1. Press `<leader>as` to start Azure Functions debugging
-2. The plugin will automatically attach the debugger to your Azure Functions process
-3. Set breakpoints in your function code
-4. Trigger your functions (HTTP requests, timers, etc.)
-5. Debug as normal
+1. Press `<leader>as` from anywhere in the repository — no need to have a C#
+   file open, and it searches from the git root rather than the cwd, so any
+   subdirectory or worktree works.
+2. It finds the Azure Functions project (any `.csproj` with
+   `<AzureFunctionsVersion>`), prompting only if the repo has more than one.
+3. `func host start --dotnet-isolated-debug` runs in a split, and the debugger
+   attaches to the worker once it comes up.
+4. Set breakpoints, trigger your functions, debug as normal.
+5. `<leader>aS` stops the session.
 
 ## Dependencies
 
-Make sure you have:
-- .NET SDK installed
+- .NET SDK
 - Azure Functions Core Tools (`func` CLI)
 - Your project built in Debug configuration
 
 ## Troubleshooting
 
-If debugging doesn't work:
+**`Failed command 'configurationDone' : 0x80131c3c`** — architecture mismatch
+between debugger and debuggee. Compare `file` on the adapter command against
+`dotnet --info | grep RID`. On macOS this means the `~/.local/opt` override is
+missing; re-run `./install.sh`.
 
-1. **Check netcoredbg installation**:
-   ```bash
-   ~/.local/share/nvim/mason/packages/netcoredbg/netcoredbg --version
-   ```
+**`Executable ... not found ... adapter definition for 'coreclr'`** — the
+debugger is not installed at all. On Linux, open nvim in the .NET profile and
+let `ensure_installed` fetch it, or run `:MasonInstall netcoredbg`.
 
-2. **Ensure your project is built**:
-   ```bash
-   dotnet build -c Debug
-   ```
+**Worker timeouts in the `func` terminal** — `Starting worker process failed`,
+`The operation has timed out`, `A debugger was not attached within the expected
+time limit`. These are consequences of a failed attach, not causes:
+`--dotnet-isolated-debug` blocks the worker until a debugger attaches, and the
+host's 60s gRPC timeout then fires. Fix the attach and they disappear.
 
-3. **Check DAP logs**:
-   ```vim
-   :DapShowLog
-   ```
+**Anything else**:
+
+```bash
+dotnet build -c Debug   # ensure the project is built
+```
+
+```vim
+:DapShowLog
+```

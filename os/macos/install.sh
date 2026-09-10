@@ -51,6 +51,53 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# netcoredbg (Apple Silicon)
+# -----------------------------------------------------------------------------
+
+# The .NET debugger, installed outside Mason because Mason ships the wrong
+# architecture here.
+#
+# mason-registry pins netcoredbg to 3.1.3-1062 and maps both darwin targets to
+# netcoredbg-osx-amd64.tar.gz, because 3.1.3 had no osx-arm64 asset. On an arm64
+# Mac that yields an x86_64 binary running under Rosetta, which cannot load the
+# arm64 DAC out of an arm64 debuggee: every attach fails at `configurationDone`
+# with 0x80131c3c (CORDBG_E_DEBUG_COMPONENT_MISSING). It runs and reports its
+# version normally, so nothing short of a real attach reveals the problem.
+#
+# 3.2.0-1092 ships netcoredbg-osx-arm64.zip. It goes to ~/.local/opt rather than
+# into the Mason package directory, which :MasonUpdate would clobber;
+# nvim/lua/configs/dap.lua prefers this path when it exists and otherwise falls
+# back to Mason. This whole block can go once mason-registry bumps the pin and
+# splits the darwin targets — remove ~/.local/opt/netcoredbg to revert.
+#
+# The existence guard: this is a pinned version, so re-running the installer
+# should not re-download it. Delete the directory to force an upgrade.
+
+NETCOREDBG_VERSION="3.2.0-1092"
+NETCOREDBG_DIR="$HOME/.local/opt/netcoredbg"
+
+if [[ -x "$NETCOREDBG_DIR/netcoredbg" ]]; then
+    info "netcoredbg already installed, skipping."
+else
+    info "Installing netcoredbg $NETCOREDBG_VERSION (arm64)..."
+
+    NETCOREDBG_URL="https://github.com/Samsung/netcoredbg/releases/download/${NETCOREDBG_VERSION}/netcoredbg-osx-arm64.zip"
+
+    run "mkdir -p '$HOME/.local/opt'"
+    run "curl -fsSL -o '$HOME/.local/opt/netcoredbg.zip' '$NETCOREDBG_URL'"
+    run "rm -rf '$NETCOREDBG_DIR' '$HOME/.local/opt/__MACOSX'"
+    run "unzip -q '$HOME/.local/opt/netcoredbg.zip' -d '$HOME/.local/opt'"
+    run "rm -rf '$HOME/.local/opt/netcoredbg.zip' '$HOME/.local/opt/__MACOSX'"
+
+    # Both steps are required for a downloaded debugger. Quarantine is only set
+    # when the archive arrives via a Gatekeeper-aware app rather than curl, so
+    # the first is a no-op here but matters for a hand-downloaded copy. The
+    # ad-hoc signature is what lets the binary take the debugging entitlement.
+    run "xattr -dr com.apple.quarantine '$NETCOREDBG_DIR' 2>/dev/null || true"
+    run "codesign --force --sign - '$NETCOREDBG_DIR/netcoredbg' '$NETCOREDBG_DIR/libdbgshim.dylib'"
+fi
+
+# -----------------------------------------------------------------------------
 # NVM location
 # -----------------------------------------------------------------------------
 
