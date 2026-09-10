@@ -63,14 +63,32 @@ diagnosis.
 
 ## Git
 
-- **Never push.** Pushing is always a separate decision I make myself.
-- Never force push.
 - Never discard unrelated working-tree changes.
 - Never use destructive git commands unless I explicitly ask for that specific
   command.
 - Prefer small, coherent commits over one large one.
 - Before committing, inspect what is staged and summarise exactly what the
   commit will contain.
+
+### Pushing and pull requests
+
+You may push, and you may open pull requests, without asking me each time.
+Three limits, and they are hard:
+
+- **Never push to the default branch.** `main`, `master`, whatever the
+  repository uses — push only to a working branch.
+- **Match the repository's existing branch naming convention.** Infer it from
+  the branches already on the remote and from any convention the project's own
+  instructions record. If it is ambiguous, ask rather than invent one.
+- **Never merge without my explicit permission.** Not a pull request, not a
+  branch, not a fast-forward, not "it was only a docs change". Opening the PR
+  is where your authority ends; landing it is mine.
+
+Never force push, and never rewrite history that already exists on the remote —
+no amending, rebasing, or resetting a pushed commit.
+
+A pull request is a proposal, not a delivery. Once you have pushed, tell me the
+branch and what is on it, and stop there.
 
 ### Committing during an approved plan
 
@@ -88,7 +106,8 @@ commit as it happens:
 - **Stage explicitly, by path.** Never `git add -A` or `git add .` on a tree
   that was not clean when the work started. Anything already modified at that
   point is mine and stays out of every commit you make.
-- **Never push**, however many increments accumulate.
+- **Never merge**, however many increments accumulate. Pushing the working
+  branch as you go is fine; landing it is not.
 
 Outside an approved plan — a small change, an ad-hoc request — ask before
 committing.

@@ -12,9 +12,13 @@
 # stdout, always exit 0. Emitting nothing means "no opinion" and normal
 # permission handling continues.
 #
-#   deny  Claude cannot run it at all, and is told to ask me to run it myself.
-#   ask   I get a prompt. For `git push` that prompt *is* the explicit
-#         permission CLAUDE.md requires, so pushing stays possible.
+#   deny   Claude cannot run it at all, and is told to ask me to run it myself.
+#   ask    I get a prompt, which is where I confirm a push CLAUDE.md has not
+#          already authorised — including one to the default branch, which
+#          CLAUDE.md rules out and only I can decide to make anyway.
+#   allow  Only for a push whose branches *all* match
+#          CLAUDE_GIT_PUSH_ALLOW_PREFIX, which is how an unattended loop pushes
+#          its own feature branches.
 
 set -uo pipefail
 
@@ -120,6 +124,75 @@ git_args() {
 
 has() { printf '%s' "$1" | grep -qE "$2"; }
 
+# Every branch a push would write to, one per line, or nothing when the command
+# does not name any explicitly.
+#
+# This only ever widens `ask` into `allow`, so "cannot tell" must return nothing
+# and let the prompt happen. It deliberately does not consult the repository to
+# resolve a bare `git push` -- that would need the hook's cwd to be the right
+# worktree, and guessing wrong means silently pushing an unintended branch.
+#
+# *Every* refspec is returned, not just the last one. `push origin main x`
+# writes both, so judging it on `x` alone would wave the push to main straight
+# through -- which is the one thing the caller must never do.
+#
+#   push -u origin kseeman123/x       ->   kseeman123/x
+#   push origin HEAD:feature/x        ->   feature/x
+#   push origin main kseeman123/x     ->   main, kseeman123/x
+#   push origin                       ->   (nothing -- current branch, unknown)
+push_targets() {
+    local -a words
+    local w r remote_seen=0 skip_value=0
+
+    read -r -a words <<< "$1"
+
+    # Skip "push" itself. The ${arr[@]+...} guard keeps this safe under `set -u`
+    # on bash 3.2.
+    for w in ${words[@]+"${words[@]:1}"}; do
+        # Options taking a separate value, whose value must not be mistaken for
+        # a remote or a refspec.
+        if ((skip_value)); then
+            skip_value=0
+            continue
+        fi
+
+        case "$w" in
+            -o|--push-option|--repo|--receive-pack|--exec) skip_value=1; continue ;;
+            -*) continue ;;
+        esac
+
+        # The first bare word is the remote; everything after it is a refspec.
+        if ((remote_seen == 0)); then
+            remote_seen=1
+            continue
+        fi
+
+        r="$w"
+        r="${r#+}"              # force marker: +feature/x -> feature/x
+        r="${r##*:}"            # a refspec writes to its right-hand side
+        r="${r#refs/heads/}"    # fully-qualified ref -> plain branch name
+
+        [[ -n "$r" ]] && printf '%s\n' "$r"
+    done
+}
+
+# Branches never eligible for the unattended allowlist, whatever prefix is set.
+# Matched exactly, against the name push_targets has already normalised, so
+# `refs/heads/main` is caught but a feature branch called `main-fix` is not.
+#
+# This is a backstop for a carelessly broad prefix, not the primary defence --
+# it cannot know a given repository's actual default branch, so it covers the
+# names that are conventionally protected and relies on the prefix being
+# specific for anything else.
+is_protected_branch() {
+    case "$1" in
+        main|master|trunk|default|develop|development|release|stable|production|HEAD)
+            return 0 ;;
+    esac
+
+    return 1
+}
+
 while IFS= read -r segment; do
     args="$(git_args "$segment")"
     [[ -n "$args" ]] || continue
@@ -187,7 +260,44 @@ while IFS= read -r segment; do
 
     if has "$args" '^push([[:space:]]|$)' \
         && ! has "$args" '(^|[[:space:]])(--dry-run|-[a-zA-Z]*n([[:space:]]|$))'; then
-        decide ask "This pushes to a remote. CLAUDE.md requires explicit permission before pushing — approving this prompt is that permission."
+
+        # Unattended opt-in. When CLAUDE_GIT_PUSH_ALLOW_PREFIX names a branch
+        # prefix, pushing a matching branch skips the prompt -- which is what
+        # lets an agent loop run without someone at the keyboard.
+        #
+        # An environment variable rather than a config file, deliberately: the
+        # relaxation lives exactly as long as the session that exports it, and
+        # cannot be committed somewhere and quietly outlive its reason. Force
+        # and delete pushes never reach here -- they are denied above.
+        allow_prefix="${CLAUDE_GIT_PUSH_ALLOW_PREFIX:-}"
+        if [[ -n "$allow_prefix" && "$allow_prefix" != "*" && "$allow_prefix" != "/" ]]; then
+            targets="$(push_targets "$args")"
+
+            # Every named branch must clear the bar, not just one of them, and
+            # naming none at all is "cannot tell" rather than consent.
+            if [[ -n "$targets" ]]; then
+                allowed=1
+                names=""
+
+                while IFS= read -r target; do
+                    if is_protected_branch "$target"; then
+                        allowed=0
+                        break
+                    fi
+
+                    case "$target" in
+                        "$allow_prefix"*) names="${names:+$names, }$target" ;;
+                        *) allowed=0; break ;;
+                    esac
+                done <<< "$targets"
+
+                if ((allowed)); then
+                    decide allow "Pushing $names, which matches CLAUDE_GIT_PUSH_ALLOW_PREFIX ('$allow_prefix')."
+                fi
+            fi
+        fi
+
+        decide ask "This pushes to a remote. CLAUDE.md allows pushing a working branch but never the default branch, and never merging — approving this prompt confirms this push."
     fi
 
     if has "$args" '^commit([[:space:]]|$)' && has "$args" '(^|[[:space:]])--amend([[:space:]]|$)'; then
