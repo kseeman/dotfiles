@@ -55,6 +55,52 @@ return {
     end,
   },
 
+  -- Mason: install the tools a profile needs, rather than relying on the user
+  -- having run `:MasonInstall` by hand. LSP servers arrive via lspconfig, but
+  -- DAP adapters have no equivalent — a missing one surfaces only as an ENOENT
+  -- from nvim-dap at the moment you try to debug.
+  --
+  -- Same split as treesitter above: this spec owns the install logic, profiles
+  -- supply `opts.ensure_installed`. Only one profile loads at a time, so that
+  -- list still has exactly one source. NvChad declares mason with an `opts`
+  -- *function*; lazy.nvim runs it first (it is the super spec) and merges this
+  -- table over the result, so its settings survive.
+  --
+  -- `event` rather than NvChad's `cmd`: nothing would trigger the check if
+  -- mason only loaded on `:Mason`.
+  {
+    "mason-org/mason.nvim",
+    event = "VeryLazy",
+    config = function(_, opts)
+      require("mason").setup(opts)
+
+      local registry = require "mason-registry"
+
+      -- `is_installed` reads the install dir, so the common case (everything
+      -- present) costs no network. Only refresh when something is missing.
+      local missing = {}
+      for _, pkg in ipairs(opts.ensure_installed or {}) do
+        if not registry.is_installed(pkg) then
+          table.insert(missing, pkg)
+        end
+      end
+
+      if #missing == 0 then
+        return
+      end
+
+      registry.refresh(function()
+        for _, name in ipairs(missing) do
+          local ok, pkg = pcall(registry.get_package, name)
+          if ok and not pkg:is_installed() then
+            vim.notify("mason: installing " .. name, vim.log.levels.INFO)
+            pkg:install()
+          end
+        end
+      end)
+    end,
+  },
+
   -- Treesitter (`main` branch — the post-rewrite plugin, required for Neovim
   -- 0.12). The old `master` branch is frozen for 0.11 and its
   -- `set-lang-from-info-string!` query directive crashes on 0.12, since

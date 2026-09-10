@@ -90,10 +90,18 @@ require("nvim-dap-virtual-text").setup({
   virt_text_win_col = nil
 })
 
--- .NET DAP configuration
+-- .NET DAP configuration.
+--
+-- Point at `mason/bin`, not into `mason/packages/netcoredbg/`. The package's
+-- internal layout is a registry detail — netcoredbg currently unpacks to
+-- `libexec/netcoredbg/netcoredbg` and only works via a generated wrapper at the
+-- package root. `mason/bin` is the stable name and survives a registry change.
+--
+-- An absolute path is required: NvChad sets mason's `PATH = "skip"`, so
+-- `mason/bin` is never added to $PATH and `exepath()` would not resolve this.
 dap.adapters.coreclr = {
   type = 'executable',
-  command = vim.fn.stdpath('data') .. '/mason/packages/netcoredbg/netcoredbg',
+  command = vim.fn.stdpath('data') .. '/mason/bin/netcoredbg',
   args = {'--interpreter=vscode'}
 }
 

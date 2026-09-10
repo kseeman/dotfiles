@@ -11,7 +11,7 @@ return {
   {
     "iabdelkareem/csharp.nvim",
     dependencies = {
-      "williamboman/mason.nvim",
+      "mason-org/mason.nvim",
       "mfussenegger/nvim-dap",
       "Tastyep/structlog.nvim",
     },
@@ -65,6 +65,17 @@ return {
         },
       })
     end,
+  },
+
+  -- Mason tools for the .NET profile. `netcoredbg` backs the `coreclr` DAP
+  -- adapter in `configs/dap.lua` — neotest-dotnet and azfunc.nvim both launch
+  -- through it, and neither can install it. See `plugins/shared.lua` for how
+  -- this list is consumed.
+  {
+    "mason-org/mason.nvim",
+    opts = {
+      ensure_installed = { "netcoredbg" },
+    },
   },
 
   -- Treesitter languages for the .NET profile
