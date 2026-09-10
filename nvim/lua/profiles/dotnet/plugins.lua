@@ -133,19 +133,43 @@ return {
     end,
   },
 
-  -- Azure Functions debugging support
+  -- Azure Functions debugging support.
+  --
+  -- Loaded on key/command rather than `ft = { "cs" }`. Nothing in azfunc.nvim
+  -- reads the current buffer, so the filetype trigger was the only reason
+  -- `<leader>as` required a C# file to be open — lazy.nvim simply had not
+  -- loaded the plugin yet, so the mapping did not exist. `keys` stubs it until
+  -- first press, which costs no startup time and works from any buffer.
+  --
+  -- `mappings = false` because the keys are declared here instead: lazy needs
+  -- the names in the spec to build the stubs, and letting the plugin bind them
+  -- too would define each key in two places. They route through
+  -- `configs.azfunc`, which searches from the git root rather than the cwd.
   {
     "fschaal/azfunc.nvim",
     dependencies = {
       "mfussenegger/nvim-dap",
     },
-    ft = { "cs" },
+    cmd = { "AzFuncStart", "AzFuncStop", "AzFuncList" },
+    keys = {
+      {
+        "<leader>as",
+        function()
+          require("configs.azfunc").start()
+        end,
+        desc = "Azure Functions start",
+      },
+      {
+        "<leader>aS",
+        function()
+          require("configs.azfunc").stop()
+        end,
+        desc = "Azure Functions stop",
+      },
+    },
     config = function()
       require("azfunc").setup({
-        mappings = {
-          start = "<leader>as",  -- Azure Functions start
-          stop = "<leader>aS",   -- Azure Functions stop
-        },
+        mappings = false,
       })
     end,
   },
