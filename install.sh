@@ -287,6 +287,67 @@ link_config \
     "$HOME/.config/nvim"
 
 # -----------------------------------------------------------------------------
+# Neovim Python host
+# -----------------------------------------------------------------------------
+
+# A dedicated venv for Neovim's Python provider, which the python profile's
+# molten-nvim (Jupyter kernels) runs inside. profiles/python/plugins.lua points
+# python3_host_prog here.
+#
+# A venv rather than `pip install --user` because Arch's Python is marked
+# externally managed (PEP 668) and refuses user installs outright, and because
+# pointing the host at a project venv would break molten in every project that
+# lacks pynvim.
+#
+# ipykernel ships a `python3` kernelspec inside the venv, which jupyter_client
+# finds through sys.prefix, so :MoltenInit works before any project kernel has
+# been registered.
+#
+# `pip install --upgrade` on every run is cheap once everything is current,
+# and keeps the host in step with molten's requirements.
+NVIM_PYTHON_DIR="$HOME/.local/opt/nvim-python"
+NVIM_PYTHON_PACKAGES=(
+    pynvim
+    jupyter_client
+    ipykernel
+    jupytext
+    nbformat
+    pillow
+    pyperclip
+)
+
+if command -v python3 &>/dev/null; then
+    info "Configuring Neovim Python host..."
+
+    # Also true when a Homebrew Python minor-version bump has left bin/python
+    # a dangling symlink, which is why the rebuild uses --clear.
+    if [[ ! -x "$NVIM_PYTHON_DIR/bin/python" ]]; then
+        run "mkdir -p '$HOME/.local/opt'"
+        run "python3 -m venv --clear '$NVIM_PYTHON_DIR'"
+    fi
+
+    run "'$NVIM_PYTHON_DIR/bin/python' -m pip install --quiet --upgrade pip ${NVIM_PYTHON_PACKAGES[*]}"
+
+    # molten writes each kernel's connection file to <jupyter data dir>/runtime
+    # by building that path itself, without creating the directory. On a
+    # machine where Jupyter has never run, every :MoltenInit then fails with
+    # ENOENT. The data dir differs per OS (~/Library/Jupyter on macOS), so ask
+    # jupyter_core for it, exactly as molten does.
+    run "'$NVIM_PYTHON_DIR/bin/python' -c 'import os; from jupyter_core.paths import jupyter_data_dir; os.makedirs(os.path.join(jupyter_data_dir(), \"runtime\"), exist_ok=True)'"
+
+    # jupytext.nvim shells out to `jupytext` on PATH, and has no setting for
+    # its location. Only that one binary is linked: putting the venv's bin/ on
+    # PATH would shadow the project's own `python`.
+    run "mkdir -p '$HOME/.local/bin'"
+
+    link_config \
+        "$NVIM_PYTHON_DIR/bin/jupytext" \
+        "$HOME/.local/bin/jupytext"
+else
+    info "python3 not found, skipping Neovim Python host."
+fi
+
+# -----------------------------------------------------------------------------
 # Claude Code configuration
 # -----------------------------------------------------------------------------
 
