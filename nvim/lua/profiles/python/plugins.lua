@@ -130,7 +130,8 @@ return {
   -- in BufReadCmd. Such notebooks fall back to the language jupytext recorded,
   -- then Jupyter's language_info, then python. Notebooks that have a
   -- kernelspec go through the original untouched. Delete this once #41 is
-  -- fixed upstream.
+  -- fixed upstream. It also wires format-on-save into jupytext's save, and on
+  -- open folds the metadata header and starts the notebook's own kernel.
   {
     "GCBallesteros/jupytext.nvim",
     lazy = false,
@@ -194,6 +195,49 @@ return {
               end,
             })
           end
+        end,
+      })
+
+      -- On opening a notebook: fold the metadata header closed, and start
+      -- the kernel the notebook names. Scheduled, so it runs once jupytext
+      -- has filled the buffer and treesitter has folds to close.
+      --
+      -- The fold comes from after/queries/markdown/folds.scm (`za` opens it).
+      -- The kernel starts only if it is registered (so a notebook from
+      -- another machine falls back to the <leader>ji picker rather than
+      -- erroring) and none is running in this buffer yet (so :e does not
+      -- start a second one).
+      vim.api.nvim_create_autocmd("BufReadCmd", {
+        pattern = "*.ipynb",
+        group = vim.api.nvim_create_augroup("jupytext-notebook-open", { clear = true }),
+        callback = function(ev)
+          local kernel
+          local file = io.open(ev.match, "r")
+          if file then
+            local ok, notebook = pcall(vim.json.decode, file:read "a")
+            file:close()
+            kernel = ok and type(notebook) == "table" and ((notebook.metadata or {}).kernelspec or {}).name or nil
+          end
+
+          vim.schedule(function()
+            if not vim.api.nvim_buf_is_valid(ev.buf) then
+              return
+            end
+
+            vim.api.nvim_buf_call(ev.buf, function()
+              if vim.api.nvim_buf_get_lines(ev.buf, 0, 1, false)[1] == "---" then
+                pcall(vim.cmd, "1foldclose")
+              end
+
+              if
+                kernel
+                and #vim.fn.MoltenRunningKernels(true) == 0
+                and vim.tbl_contains(vim.fn.MoltenAvailableKernels(), kernel)
+              then
+                vim.cmd("MoltenInit " .. kernel)
+              end
+            end)
+          end)
         end,
       })
     end,

@@ -374,6 +374,12 @@ image.nvim's `magick_cli` processor needs ImageMagick's `magick`, which both man
 
 `pyright` and `ruff` are in the shared `servers` list. The loop wraps each server's `on_attach` so lspconfig's own hook still runs after ours; setting `on_attach` outright replaced it (`vim.lsp.config` merges with `force`) and dropped commands like `:LspPyrightSetPythonPath`. ruff's `hoverProvider` is switched off in its `on_attach`, otherwise `K` stacks ruff's lint-rule hover on top of pyright's. otter's LSP client (inside notebook cells) gets `gd`/`K` from NvChad's `LspAttach` autocmd like any other server. quarto-nvim no longer has a `keymap` option, despite molten's notebook guide passing one.
 
+### Opening a notebook
+
+A second `BufReadCmd *.ipynb` autocmd (defined after `jupytext.setup()`, so it runs after jupytext's read) schedules two things once the buffer is filled:
+- It closes the fold on the YAML metadata header. That fold comes from `nvim/after/queries/markdown/folds.scm`, which extends nvim-treesitter's markdown folds with `minus_metadata`. Elsewhere, `foldlevel=99` leaves front matter open.
+- It runs `MoltenInit <kernelspec.name>`, but only if that kernel is in `MoltenAvailableKernels()` and none is running in the buffer yet. So a notebook from another machine falls back to the picker, and `:e` never starts a second kernel.
+
 ### Formatting
 
 conform loads on `BufWritePre` (`plugins/shared.lua`). Before that it had no trigger and only loaded on the first `<leader>fm`, so `format_on_save` silently did nothing until then, SQL included.

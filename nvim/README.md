@@ -135,11 +135,13 @@ Integrated test runner with language detection and execution.
 
 ### Jupyter (Python Profile)
 
-Open a `.ipynb` (or a markdown file) and start a kernel with `<leader>ji`.
-Code cells are the ` ```python ` blocks. The cell commands (`jc`, `ja`, `jA`)
+Open a `.ipynb` and its kernel starts automatically, if the notebook names one
+that is registered (otherwise pick one with `<leader>ji`). The notebook's
+metadata header is folded closed; `za` opens it. Code cells are the
+` ```python ` blocks. The cell commands (`jc`, `ja`, `jA`)
 only work there; in a plain `.py` file, run lines and selections with `jl`/`je`.
 
-- `<leader>ji` - Start a kernel (pick from the installed kernelspecs)
+- `<leader>ji` - Start a kernel (pick from the installed kernelspecs); automatic for notebooks that name a registered one
 - `<leader>jc` - Run the cell under the cursor
 - `<leader>ja` / `<leader>jA` - Run all cells above / every cell
 - `<leader>jl` - Run the current line
