@@ -27,10 +27,15 @@ return {
     end,
   },
 
-  -- Formatting
+  -- Formatting. Loads on BufWritePre so configs/conform.lua's format_on_save
+  -- is registered before the first save. Without a trigger, conform only
+  -- loaded on the first <leader>fm, and until then no save formatted anything,
+  -- including the SQL that format_on_save exists for. `cmd` keeps :ConformInfo
+  -- usable before any save.
   {
     "stevearc/conform.nvim",
-    -- event = 'BufWritePre', -- uncomment for format on save
+    event = "BufWritePre",
+    cmd = { "ConformInfo" },
     opts = require "configs.conform",
   },
 
