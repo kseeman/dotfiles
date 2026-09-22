@@ -90,7 +90,8 @@ Inside nvim, use these commands:
 
 #### Python Profile
 - **Languages**: Python, plus Jupyter notebooks (`.ipynb`)
-- **LSP**: pyright for types, ruff for linting (both via Mason); ruff formats on `<leader>fm`
+- **LSP**: pyright for types, ruff for linting (both via Mason). pyright uses the project's `.venv`/`venv` when there is one
+- **Formatting**: ruff formats `.py` files and notebook cells on save (and on `<leader>fm`)
 - **Notebooks**: molten-nvim runs code in a real Jupyter kernel with output, including plots, shown inline under each cell
 - **Notebook editing**: jupytext.nvim opens `.ipynb` as markdown and saves it back as a notebook; quarto-nvim + otter.nvim give LSP and completion inside the code cells
 - **Debugging**: debugpy via nvim-dap-python

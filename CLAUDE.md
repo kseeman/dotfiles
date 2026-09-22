@@ -374,6 +374,12 @@ image.nvim's `magick_cli` processor needs ImageMagick's `magick`, which both man
 
 `pyright` and `ruff` are in the shared `servers` list. ruff's `hoverProvider` is switched off in its `on_attach`, otherwise `K` stacks ruff's lint-rule hover on top of pyright's. otter's LSP client (inside notebook cells) gets `gd`/`K` from NvChad's `LspAttach` autocmd like any other server. quarto-nvim no longer has a `keymap` option, despite molten's notebook guide passing one.
 
+### Formatting
+
+conform loads on `BufWritePre` (`plugins/shared.lua`). Before that it had no trigger and only loaded on the first `<leader>fm`, so `format_on_save` silently did nothing until then, SQL included.
+
+In the python profile, `.py` files format on save through `format_on_save`. Notebooks can't use that path. jupytext saves through a buffer-local `BufWriteCmd`, and Neovim sends no `BufWritePre` for a write a `BufWriteCmd` handles. So the jupytext spec re-registers that handler wrapped: format with conform's `injected` formatter, then run jupytext's own write. jupytext registers `BufWriteCmd` and `FileWriteCmd` under a single autocmd id, so deleting one deletes both, and `FileWriteCmd` is put back unwrapped. `formatters_by_ft.markdown` returns `injected` only for `.ipynb` buffers, so ordinary markdown code snippets are never rewritten.
+
 ### Validating headless
 
 NvChad loads lspconfig on `User FilePost`, which only fires after `UIEnter`, so under `--headless` no LSP ever attaches unless the event is fired by hand. Also, **any nvim run rewrites `nvim/lazy-lock.json` from the plugins the current profile loaded**, even with `XDG_DATA_HOME` pointed elsewhere, because the lockfile lives in the config dir. Check `git diff nvim/lazy-lock.json` after testing.

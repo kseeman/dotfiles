@@ -161,6 +161,41 @@ return {
       end
 
       require("jupytext").setup(opts)
+
+      -- Format notebook cells on save. conform's format_on_save never sees a
+      -- notebook: jupytext saves through a buffer-local BufWriteCmd, Neovim
+      -- sends no BufWritePre for writes a BufWriteCmd handles, and the
+      -- handler's own inner :write runs without nested autocmds. Its write
+      -- function is local to init.lua, so it cannot be patched like
+      -- get_ipynb_metadata above. Instead, once jupytext has read a notebook
+      -- and registered that handler, it is re-registered wrapped: format,
+      -- then jupytext's own callback. The wrapper only ever exists where
+      -- jupytext's handler does, so it can never claim a write jupytext
+      -- would not have made. Defined after setup(), so this BufReadCmd runs
+      -- after jupytext's.
+      vim.api.nvim_create_autocmd("BufReadCmd", {
+        pattern = "*.ipynb",
+        group = vim.api.nvim_create_augroup("jupytext-format-on-save", { clear = true }),
+        callback = function(ev)
+          local handlers = vim.api.nvim_get_autocmds({ group = "jupytext-nvim", event = "BufWriteCmd", buffer = ev.buf })
+          for _, handler in ipairs(handlers) do
+            local write = handler.callback
+            -- jupytext registers BufWriteCmd and FileWriteCmd in one call, so
+            -- they share this id and deleting it drops both. FileWriteCmd
+            -- (a partial write, e.g. :'<,'>w) is put back unwrapped.
+            vim.api.nvim_del_autocmd(handler.id)
+            vim.api.nvim_create_autocmd("FileWriteCmd", { buffer = ev.buf, group = "jupytext-nvim", callback = write })
+            vim.api.nvim_create_autocmd("BufWriteCmd", {
+              buffer = ev.buf,
+              group = "jupytext-nvim",
+              callback = function(write_ev)
+                require("conform").format({ bufnr = write_ev.buf, timeout_ms = 2000, lsp_format = "never" })
+                return write(write_ev)
+              end,
+            })
+          end
+        end,
+      })
     end,
     opts = {
       style = "markdown",
