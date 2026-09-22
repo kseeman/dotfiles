@@ -39,19 +39,42 @@ end
 -- Note: jdtls is NOT included here because nvim-jdtls plugin manages it separately
 local servers = { "html", "cssls", "omnisharp", "ts_ls", "js_ls", "clangd", "pyright", "ruff" }
 
+-- Wrap a server's on_attach so ours runs and lspconfig's own still does.
+-- vim.lsp.config() merges with "force", so setting on_attach outright replaced
+-- lspconfig's per-server hook, and with it the buffer commands those hooks
+-- create: :LspPyrightOrganizeImports and :LspPyrightSetPythonPath,
+-- :LspTypescriptSourceAction, :LspClangdSwitchSourceHeader and so on. Reading
+-- vim.lsp.config[server] here resolves lspconfig's lsp/<server>.lua before any
+-- of our overrides land. 0.12 allows on_attach to be a list of functions.
+local function with_server_on_attach(server, attach)
+  local ok, config = pcall(function()
+    return vim.lsp.config[server]
+  end)
+  local default = ok and config and config.on_attach or nil
+  local defaults = type(default) == "function" and { default } or default or {}
+
+  return function(client, bufnr)
+    attach(client, bufnr)
+    for _, fn in ipairs(defaults) do
+      fn(client, bufnr)
+    end
+  end
+end
+
 -- Configure each server with on_attach
 for _, server in ipairs(servers) do
   vim.lsp.config(server, {
-    on_attach = on_attach,
+    on_attach = with_server_on_attach(server, on_attach),
   })
 end
 
 -- ruff and pyright both answer hover, which stacks two windows on `K`. ruff's
 -- is only lint-rule docs, so it steps aside, as ruff's own docs recommend.
+local ruff_on_attach = vim.lsp.config.ruff.on_attach
 vim.lsp.config("ruff", {
   on_attach = function(client, bufnr)
     client.server_capabilities.hoverProvider = false
-    on_attach(client, bufnr)
+    ruff_on_attach(client, bufnr)
   end,
 })
 
