@@ -153,6 +153,35 @@ local test_configs = {
       return 'dotnet test --logger "console;verbosity=detailed"'
     end,
   },
+
+  -- Python (pytest). "Debug" drops into pdb on the first failure, in the
+  -- terminal split the runner already opens.
+  python = {
+    pattern = function(filepath)
+      return filepath:match("/test_[^/]*%.py$") or filepath:match("_test%.py$")
+    end,
+    run_file = function(filepath)
+      return M.get_python() .. ' -m pytest ' .. filepath
+    end,
+    run_all = function()
+      return M.get_python() .. ' -m pytest'
+    end,
+    debug_file = function(filepath)
+      return M.get_python() .. ' -m pytest -x --pdb ' .. filepath
+    end,
+    debug_all = function()
+      return M.get_python() .. ' -m pytest -x --pdb'
+    end,
+    -- A node id rather than `-k`, which is a substring match: `-k test_add`
+    -- also runs test_add_many, and every test in a file named test_add.py.
+    -- test_name is already `Class::method` for tests inside a class.
+    run_single = function(filepath, test_name)
+      return M.get_python() .. ' -m pytest "' .. filepath .. '::' .. test_name .. '"'
+    end,
+    debug_single = function(filepath, test_name)
+      return M.get_python() .. ' -m pytest -x --pdb "' .. filepath .. '::' .. test_name .. '"'
+    end,
+  },
 }
 
 -- Helper function for Playwright config
@@ -163,6 +192,20 @@ function M.get_playwright_config()
     return playwright_config
   end
   return nil
+end
+
+-- Helper for the Python interpreter: the project's venv when there is one, so
+-- pytest runs against its dependencies without the venv being activated in
+-- the shell nvim was started from.
+function M.get_python()
+  local cwd = vim.fn.getcwd()
+  for _, venv in ipairs({ '.venv', 'venv' }) do
+    local python = cwd .. '/' .. venv .. '/bin/python'
+    if vim.fn.executable(python) == 1 then
+      return python
+    end
+  end
+  return 'python3'
 end
 
 -- Detect test type based on current file
@@ -184,6 +227,40 @@ function M.get_test_name_under_cursor()
   local cursor_pos = vim.api.nvim_win_get_cursor(0)
   local row = cursor_pos[1]
   
+  -- Python gets its own pass: the Playwright pattern below also matches calls
+  -- like `s.split(",")`, which would be taken for a test named ",". It stops
+  -- at the nearest enclosing `def` rather than a fixed ten lines, since a
+  -- pytest body routinely runs longer, and only accepts it if it is a test —
+  -- so the cursor in a helper never resolves to the test above it. An
+  -- indented test is qualified with its enclosing class, giving the
+  -- `Class::method` form a pytest node id needs.
+  if vim.bo.filetype == 'python' then
+    for i = row, 1, -1 do
+      local check_line = vim.api.nvim_buf_get_lines(0, i-1, i, false)[1] or ''
+      local indent, def_name = check_line:match('^(%s*)def%s+([%w_]+)%s*%(')
+      if not def_name then
+        indent, def_name = check_line:match('^(%s*)async%s+def%s+([%w_]+)%s*%(')
+      end
+      if def_name then
+        if not def_name:match('^test') then
+          return nil
+        end
+        if #indent == 0 then
+          return def_name
+        end
+        for j = i - 1, 1, -1 do
+          local class_line = vim.api.nvim_buf_get_lines(0, j-1, j, false)[1] or ''
+          local class_indent, class_name = class_line:match('^(%s*)class%s+([%w_]+)')
+          if class_name and #class_indent < #indent then
+            return class_name .. '::' .. def_name
+          end
+        end
+        return def_name
+      end
+    end
+    return nil
+  end
+
   -- Look for test patterns around the cursor
   for i = row, math.max(1, row - 10), -1 do
     local check_line = vim.api.nvim_buf_get_lines(0, i-1, i, false)[1]

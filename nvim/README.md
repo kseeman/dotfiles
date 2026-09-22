@@ -6,7 +6,8 @@ A powerful Neovim configuration built on NvChad with multi-profile support for d
 
 This configuration extends NvChad with:
 - **Multi-profile system** for language-specific development environments
-- Enhanced LSP support for .NET and Java development
+- Enhanced LSP support for .NET, Java and Python development
+- Interactive Jupyter notebooks (Python profile)
 - Debugging capabilities via DAP
 - Integrated testing frameworks
 - Custom keymaps and productivity features
@@ -30,6 +31,7 @@ This configuration supports multiple profiles optimized for different developmen
 - **default**: General-purpose configuration with basic plugins
 - **dotnet**: .NET development with C#, F#, omnisharp, debugging, and testing tools
 - **java**: Java development with jdtls, Maven/Gradle support, debugging, and testing
+- **python**: Python development with pyright/ruff, debugging, pytest, and interactive Jupyter notebooks
 
 ### Using Profiles
 
@@ -86,6 +88,17 @@ Inside nvim, use these commands:
 - **Documentation**: Javadoc generation with Neogen
 - **Additional Plugins**: nvim-jdtls, neotest-java, maven.nvim, spring-boot.nvim
 
+#### Python Profile
+- **Languages**: Python, plus Jupyter notebooks (`.ipynb`)
+- **LSP**: pyright for types, ruff for linting (both via Mason); ruff formats on `<leader>fm`
+- **Notebooks**: molten-nvim runs code in a real Jupyter kernel with output, including plots, shown inline under each cell
+- **Notebook editing**: jupytext.nvim opens `.ipynb` as markdown and saves it back as a notebook; quarto-nvim + otter.nvim give LSP and completion inside the code cells
+- **Debugging**: debugpy via nvim-dap-python
+- **Testing**: pytest via Neotest and the custom test runner, using the project's `.venv`/`venv` when there is one
+- **Documentation**: Google-style docstrings with Neogen
+- **Project Detection**: pyproject.toml, setup.py, setup.cfg, requirements.txt, Pipfile
+- **Additional Plugins**: molten-nvim, quarto-nvim, otter.nvim, jupytext.nvim, nvim-dap-python, neotest-python
+
 ## Key Features
 
 ### Enhanced Keymaps
@@ -119,6 +132,40 @@ Integrated test runner with language detection and execution.
 - `<leader>as` - Start Azure Functions debugging
 - `<leader>aS` - Stop Azure Functions debugging
 
+### Jupyter (Python Profile)
+
+Open a `.ipynb` (or a markdown file) and start a kernel with `<leader>ji`.
+Code cells are the ` ```python ` blocks. The cell commands (`jc`, `ja`, `jA`)
+only work there; in a plain `.py` file, run lines and selections with `jl`/`je`.
+
+- `<leader>ji` - Start a kernel (pick from the installed kernelspecs)
+- `<leader>jc` - Run the cell under the cursor
+- `<leader>ja` / `<leader>jA` - Run all cells above / every cell
+- `<leader>jl` - Run the current line
+- `<leader>je` - Run a motion (normal) or the selection (visual)
+- `<leader>jr` - Re-run the cell molten last ran here
+- `<leader>jo` - Enter the output window (scroll, yank)
+- `<leader>jh` - Hide output
+- `<leader>jm` - Open image output in a popup
+- `<leader>jn` / `<leader>jp` - Next / previous cell
+- `<leader>jx` - Delete the cell's output
+- `<leader>jk` - Interrupt the kernel
+- `<leader>jR` - Restart the kernel
+- `<leader>jd` - Stop the kernel
+
+The Jupyter host runs from its own venv at `~/.local/opt/nvim-python`, created
+by `install.sh`. That venv ships a `python3` kernel, so `<leader>ji` works right
+away, but that kernel only sees the venv's own packages. To run a notebook
+against a project's dependencies, register the project's venv as a kernel once:
+
+```bash
+.venv/bin/pip install ipykernel
+.venv/bin/python -m ipykernel install --user --name my-project
+```
+
+It then appears in the `<leader>ji` picker. After the first install (or a
+`:Lazy update` of molten), restart nvim once so the `:Molten*` commands appear.
+
 ## File Structure
 ```
 .
@@ -131,8 +178,10 @@ Integrated test runner with language detection and execution.
 │   │   │   └── plugins.lua  # Default profile plugins
 │   │   ├── dotnet/
 │   │   │   └── plugins.lua  # .NET development plugins
-│   │   └── java/
-│   │       └── plugins.lua  # Java development plugins
+│   │   ├── java/
+│   │   │   └── plugins.lua  # Java development plugins
+│   │   └── python/
+│   │       └── plugins.lua  # Python + Jupyter plugins
 │   ├── plugins/
 │   │   └── init.lua         # Legacy plugin configuration
 │   ├── configs/
@@ -173,6 +222,7 @@ git clone <your-repo-url> ~/.config/nvim
 ```bash
 NVIM_PROFILE=dotnet nvim  # For .NET development
 NVIM_PROFILE=java nvim    # For Java development
+NVIM_PROFILE=python nvim  # For Python and Jupyter notebooks
 nvim                      # For default profile
 ```
 
@@ -197,6 +247,13 @@ nvim                      # For default profile
 - Eclipse JDT Language Server (installed via Mason)
 - java-debug-adapter (installed via Mason)
 - Maven or Gradle (optional)
+
+#### For Python Profile
+- Python 3, and the `~/.local/opt/nvim-python` venv that `install.sh` builds
+  (pynvim, jupyter_client, ipykernel, jupytext)
+- ImageMagick (`magick`) and a terminal with the Kitty graphics protocol, for
+  plot output
+- pyright, ruff and debugpy (installed via Mason; debugpy automatically)
 
 ## Credits
 

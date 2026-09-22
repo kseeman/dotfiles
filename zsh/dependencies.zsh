@@ -47,6 +47,8 @@ check_command fastfetch
 check_command bat
 check_command rg
 check_command tmux
+check_command python3
+check_command magick
 
 check_nvm
 

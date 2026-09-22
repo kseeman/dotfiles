@@ -4,7 +4,8 @@ local M = {}
 M.profiles = {
   "default",
   "dotnet",
-  "java"
+  "java",
+  "python"
 }
 
 -- Detect operating system

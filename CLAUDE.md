@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Purpose
 
-This is a personal dotfiles repository covering Neovim, zsh, and terminal configuration across macOS and Linux. The Neovim configuration is built on NvChad v2.5 and features a custom multi-profile system that loads different plugin sets and configurations based on the development environment (default, .NET, or Java).
+This is a personal dotfiles repository covering Neovim, zsh, and terminal configuration across macOS and Linux. The Neovim configuration is built on NvChad v2.5 and features a custom multi-profile system that loads different plugin sets and configurations based on the development environment (default, .NET, Java, or Python).
 
 ## Cross-Platform Structure
 
@@ -276,6 +276,7 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 - **Playwright/Jest** (TypeScript/JavaScript): Detects `*.spec.ts`, `*.test.ts` files
 - **Java**: Detects `*Test.java`, `*Tests.java`, `*IT.java` files, generates Maven/Gradle commands
 - **.NET**: Detects `*Test.cs`, `*Tests.cs` files, uses `dotnet test --filter`
+- **Python**: Detects `test_*.py`, `*_test.py` files, runs `python -m pytest` with the project's `.venv`/`venv` interpreter when one exists. Test-name lookup has its own Python pass, because the shared Playwright pattern also matches `s.split(",")`.
 
 ### Keymaps
 
@@ -331,17 +332,51 @@ When modifying profile configurations:
 
 ### Adding New Language Profiles
 
-To add a new profile (e.g., Python):
+To add a new profile (e.g., Go):
 
-1. Create `nvim/lua/profiles/python/plugins.lua` returning a lazy.nvim spec table
-2. Add `"python"` to `M.profiles` array in `profile-manager.lua`
+1. Create `nvim/lua/profiles/go/plugins.lua` returning a lazy.nvim spec table
+2. Add `"go"` to `M.profiles` array in `profile-manager.lua`
 3. Follow the pattern from existing profiles for LSP setup (remember to call NvChad's `on_attach`)
+
+A profile can branch shared config on `vim.g.current_nvim_profile`. `init.lua` sets it in `load_profile()`, before `configs.lazy` or `options` are required. The Python profile does this; see below.
 
 ### Common Profile Issues
 
 - **LSP keymaps not working**: Check that `on_attach` calls `require("nvchad.configs.lspconfig").on_attach(client, bufnr)`
 - **Plugins not loading**: Verify the profile returns a proper table structure, check `:Lazy` for errors
 - **jdtls not starting**: Check launcher jar exists, config directory matches OS/arch, and jdtls is NOT in lspconfig servers list
+
+## Python Profile and Jupyter
+
+Interactive notebooks come from four plugins: **molten-nvim** runs code in a real Jupyter kernel and draws output inline (plots through the shared image.nvim spec); **jupytext.nvim** opens `.ipynb` as markdown and writes it back on save; **quarto-nvim** + **otter.nvim** give LSP/completion and cell-aware running inside the markdown code blocks. Keymaps are under `<leader>j` (`<leader>m` would prefix NvChad's `<leader>ma`).
+
+### molten is a remote plugin, and this config disables remote plugins
+
+Two separate switches have to be undone, and both are undone **only for the python profile**:
+
+- **`nvchad.options` sets `g.loaded_python3_provider = 0`.** The provider's guard is `exists()`, so any value blocks it; `options.lua` *deletes* the variable after requiring `nvchad.options`. Setting it earlier would just be overwritten.
+- **`configs/lazy.lua` lists `"rplugin"` in `disabled_plugins`.** lazy.nvim matches those names against runtime *filenames*, so `rplugin.vim` (which sources the `:UpdateRemotePlugins` manifest) is never loaded and no `:Molten*` command exists. The entry is filtered out of the list before `lazy.setup`.
+
+molten is `lazy = false` on purpose: `:UpdateRemotePlugins` rewrites the whole manifest from the current runtimepath, so running it while molten isn't loaded silently deletes every `:Molten*` command. After molten is installed or updated, restart nvim once for the commands to appear.
+
+### The Python host venv
+
+`install.sh` builds `~/.local/opt/nvim-python` (next to the netcoredbg override) with pynvim, jupyter_client, ipykernel, jupytext, nbformat, pillow and pyperclip, and the profile sets `python3_host_prog` to it at module load. It is a venv because Arch's Python is PEP 668 externally-managed. It is *dedicated* because pointing the host at a project venv breaks molten in every project without pynvim.
+
+- ipykernel's wheel ships a `python3` kernelspec into the venv, and jupyter_client finds it through `sys.prefix`, so `:MoltenInit` has a kernel on a fresh machine. Project kernels are registered with `ipykernel install --user` from the project's own venv.
+- **molten writes connection files to `<jupyter data dir>/runtime` without creating it.** On a machine where Jupyter has never run, every `:MoltenInit` fails with ENOENT. The installer creates it, asking `jupyter_core` for the data dir (it is `~/Library/Jupyter` on macOS).
+- **jupytext.nvim requires `jupytext` on PATH** and has no setting for it. Only that binary is linked into `~/.local/bin`. Putting the venv's `bin/` on PATH would shadow projects' `python`.
+- The venv is rebuilt with `--clear` when `bin/python` is not executable, which is what a Homebrew Python minor-version bump leaves behind.
+
+image.nvim's `magick_cli` processor needs ImageMagick's `magick`, which both manifests install.
+
+### LSP
+
+`pyright` and `ruff` are in the shared `servers` list. ruff's `hoverProvider` is switched off in its `on_attach`, otherwise `K` stacks ruff's lint-rule hover on top of pyright's. otter's LSP client (inside notebook cells) gets `gd`/`K` from NvChad's `LspAttach` autocmd like any other server. quarto-nvim no longer has a `keymap` option, despite molten's notebook guide passing one.
+
+### Validating headless
+
+NvChad loads lspconfig on `User FilePost`, which only fires after `UIEnter`, so under `--headless` no LSP ever attaches unless the event is fired by hand. Also, **any nvim run rewrites `nvim/lazy-lock.json` from the plugins the current profile loaded**, even with `XDG_DATA_HOME` pointed elsewhere, because the lockfile lives in the config dir. Check `git diff nvim/lazy-lock.json` after testing.
 
 ## Git Ignore Patterns
 
@@ -356,6 +391,7 @@ Language servers and debuggers are installed via Mason:
 - **Java**: `jdtls`, `java-debug-adapter`
 - **.NET**: `omnisharp`, `netcoredbg`
 - **TypeScript**: `typescript-language-server`, `js-debug-adapter`
+- **Python**: `pyright`, `ruff`, `debugpy` (`debugpy` via the profile's `ensure_installed`)
 
 Install missing packages: `:Mason` then search and press `i` to install.
 

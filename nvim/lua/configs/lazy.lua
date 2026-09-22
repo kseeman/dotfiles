@@ -1,4 +1,4 @@
-return {
+local config = {
   defaults = { lazy = true },
   install = { colorscheme = { "nvchad" } },
 
@@ -53,3 +53,17 @@ return {
     },
   },
 }
+
+-- rplugin.vim is what sources the :UpdateRemotePlugins manifest, so with it
+-- disabled no remote plugin ever defines its commands. The Python profile's
+-- molten-nvim is one; every other profile has none. lazy.nvim matches these
+-- names against runtime filenames, so the entry has to be removed rather than
+-- re-enabled later. `current_nvim_profile` is set by init.lua before this
+-- module is required.
+if vim.g.current_nvim_profile == "python" then
+  config.performance.rtp.disabled_plugins = vim.tbl_filter(function(name)
+    return name ~= "rplugin"
+  end, config.performance.rtp.disabled_plugins)
+end
+
+return config
