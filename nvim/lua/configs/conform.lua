@@ -36,11 +36,19 @@ local options = {
     },
   },
 
-  format_on_save = function(bufnr)
+  -- SQL formats after the write, asynchronously. sqlfluff's time grows with
+  -- the file (seconds for a few dozen statements), so a blocking
+  -- format_on_save would hit its timeout; this has none, and conform writes
+  -- the buffer again once the result is in.
+  format_after_save = function(bufnr)
     local ft = vim.bo[bufnr].filetype
     if ft == "sql" or ft == "mysql" or ft == "plsql" then
-      return { timeout_ms = 2000, lsp_format = "never" }
+      return { lsp_format = "never" }
     end
+  end,
+
+  format_on_save = function(bufnr)
+    local ft = vim.bo[bufnr].filetype
 
     -- The python profile also formats Python on save. Other profiles leave it
     -- to <leader>fm, since reformatting a whole file on save turns any edit

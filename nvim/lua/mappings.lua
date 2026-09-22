@@ -40,9 +40,10 @@ end, { desc = "terminal toggle floating term" })
 local test_runner = require("configs.test-runner")
 test_runner.setup()
 
--- Manual format current buffer
+-- Manual format current buffer. Async, so a slow formatter (sqlfluff on a
+-- large file) finishes instead of hitting a timeout.
 map({ "n", "v" }, "<leader>fm", function()
-  require("conform").format({ lsp_fallback = true, timeout_ms = 2000 })
+  require("conform").format({ lsp_fallback = true, async = true })
 end, { desc = "Format buffer" })
 
 -- Reload config modules without restarting nvim
