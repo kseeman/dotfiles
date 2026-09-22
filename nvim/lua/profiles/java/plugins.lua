@@ -296,6 +296,16 @@ return {
     end,
   },
 
+  -- Mason tools for the Java profile. `sqlfluff` backs conform's SQL
+  -- formatter (configs/conform.lua), which formats .sql files on save. See
+  -- `plugins/shared.lua` for how this list is consumed.
+  {
+    "mason-org/mason.nvim",
+    opts = {
+      ensure_installed = { "sqlfluff" },
+    },
+  },
+
   -- Treesitter languages for the Java profile
   {
     "nvim-treesitter/nvim-treesitter",

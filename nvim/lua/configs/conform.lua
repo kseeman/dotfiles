@@ -21,7 +21,17 @@ local options = {
 
   formatters = {
     sqlfluff = {
-      args = { "format", "--dialect=postgres", "--config", vim.fn.expand("~/.sqlfluff"), "-" },
+      -- sqlfluff exits with an error if --config names a missing file, so the
+      -- personal ~/.sqlfluff is optional rather than required.
+      args = function()
+        local args = { "format", "--dialect=postgres" }
+        local config = vim.fn.expand("~/.sqlfluff")
+        if vim.uv.fs_stat(config) then
+          vim.list_extend(args, { "--config", config })
+        end
+        table.insert(args, "-")
+        return args
+      end,
       require_cwd = false,
     },
   },
