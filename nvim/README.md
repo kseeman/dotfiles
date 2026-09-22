@@ -253,7 +253,7 @@ nvim                      # For default profile
   (pynvim, jupyter_client, ipykernel, jupytext)
 - ImageMagick (`magick`) and a terminal with the Kitty graphics protocol, for
   plot output
-- pyright, ruff and debugpy (installed via Mason; debugpy automatically)
+- pyright, ruff and debugpy (installed automatically via Mason on first launch)
 
 ## Credits
 

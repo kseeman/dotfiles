@@ -166,12 +166,16 @@ return {
     end,
   },
 
-  -- Mason tools for the Python profile. `debugpy` backs nvim-dap-python above.
-  -- See `plugins/shared.lua` for how this list is consumed.
+  -- Mason tools for the Python profile. `debugpy` backs nvim-dap-python above;
+  -- `pyright` and `ruff` are the servers configs/lspconfig.lua enables (ruff
+  -- also backs conform's ruff_format). Listing the servers here departs from
+  -- the other profiles, which leave theirs to a manual :MasonInstall, so the
+  -- profile works on first launch. See `plugins/shared.lua` for how this list
+  -- is consumed.
   {
     "mason-org/mason.nvim",
     opts = {
-      ensure_installed = { "debugpy" },
+      ensure_installed = { "debugpy", "pyright", "ruff" },
     },
   },
 

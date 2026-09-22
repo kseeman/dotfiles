@@ -391,7 +391,7 @@ Language servers and debuggers are installed via Mason:
 - **Java**: `jdtls`, `java-debug-adapter`
 - **.NET**: `omnisharp`, `netcoredbg`
 - **TypeScript**: `typescript-language-server`, `js-debug-adapter`
-- **Python**: `pyright`, `ruff`, `debugpy` (`debugpy` via the profile's `ensure_installed`)
+- **Python**: `pyright`, `ruff`, `debugpy` (all three via the profile's `ensure_installed`)
 
 Install missing packages: `:Mason` then search and press `i` to install.
 
