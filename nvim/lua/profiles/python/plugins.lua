@@ -123,9 +123,45 @@ return {
   --
   -- `lazy = false` per upstream: it registers BufReadCmd for *.ipynb, which
   -- has to exist before the first notebook is opened.
+  --
+  -- The config patches around upstream issue #41: get_ipynb_metadata reads
+  -- `metadata.kernelspec.language` unguarded, so opening a notebook with no
+  -- kernelspec (made by `jupytext --to notebook`, or metadata-stripped) fails
+  -- in BufReadCmd. Such notebooks fall back to the language jupytext recorded,
+  -- then Jupyter's language_info, then python. Notebooks that have a
+  -- kernelspec go through the original untouched. Delete this once #41 is
+  -- fixed upstream.
   {
     "GCBallesteros/jupytext.nvim",
     lazy = false,
+    config = function(_, opts)
+      local utils = require "jupytext.utils"
+      local get_ipynb_metadata = utils.get_ipynb_metadata
+
+      -- Mirrors upstream's own table, which is local to utils.lua.
+      local extensions = { python = "py", julia = "jl", r = "r", R = "r", bash = "sh" }
+
+      utils.get_ipynb_metadata = function(filename)
+        local file = io.open(filename, "r")
+        local ok, notebook = pcall(vim.json.decode, file and file:read "a" or "")
+        if file then
+          file:close()
+        end
+
+        local metadata = ok and type(notebook) == "table" and notebook.metadata or {}
+        if metadata.kernelspec then
+          return get_ipynb_metadata(filename)
+        end
+
+        local language = (metadata.jupytext or {}).main_language
+          or (metadata.language_info or {}).name
+          or "python"
+
+        return { language = language, extension = extensions[language] }
+      end
+
+      require("jupytext").setup(opts)
+    end,
     opts = {
       style = "markdown",
       output_extension = "md",
