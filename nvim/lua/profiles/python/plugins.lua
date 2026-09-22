@@ -104,22 +104,16 @@ return {
       map("n", "<leader>ja", runner.run_above, { desc = "Jupyter run cells above" })
       map("n", "<leader>jA", runner.run_all, { desc = "Jupyter run all cells" })
 
-      -- Activating is per-buffer. The ft trigger loads this plugin *from* the
-      -- first markdown buffer's FileType event, which has already fired by the
-      -- time the autocmd below exists, so that buffer is activated directly.
-      local function activate()
-        if vim.tbl_contains({ "markdown", "quarto" }, vim.bo.filetype) then
-          quarto.activate()
-        end
-      end
-
+      -- Activating is per-buffer. The buffer whose FileType loaded this plugin
+      -- is covered too: after an ft-triggered load, lazy.nvim re-fires
+      -- FileType for that buffer, which reaches this autocmd.
       vim.api.nvim_create_autocmd("FileType", {
         pattern = { "markdown", "quarto" },
         desc = "Activate quarto (otter LSP, cell runner) in markdown buffers",
-        callback = activate,
+        callback = function()
+          quarto.activate()
+        end,
       })
-
-      activate()
     end,
   },
 
