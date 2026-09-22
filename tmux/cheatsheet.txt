@@ -1,0 +1,54 @@
+tmux cheatsheet                                   prefix is C-b, then the key
+===============                                   q to close, / to search here
+
+HELP
+  ?            this cheatsheet
+  /            fuzzy-search every binding
+  r            reload tmux.conf
+  :            command prompt
+
+PANES
+  |            split left/right
+  -            split top/bottom
+  h j k l      move to pane left / below / above / right
+  H J K L      resize (repeatable: hold C-b once, press several times)
+  z            zoom pane (toggle)
+  x            close pane
+  !            break pane out into its own window
+  q            show pane numbers
+
+WINDOWS
+  c            new window
+  1 .. 9       go to window N
+  n / p        next / previous window
+  ,            rename window
+  w            window and session tree
+  &            close window
+
+SESSIONS
+  f            fuzzy-find a project and switch to its session
+  s            session tree
+  Space        last session (toggle)
+  ( / )        previous / next session
+  $            rename session
+  d            detach
+  C-s / C-r    save / restore all sessions (tmux-resurrect)
+
+COPY MODE
+  [            enter copy mode (scroll with the mouse, or j/k, C-u/C-d)
+  v            start selection
+  C-v          toggle rectangle selection
+  y            yank to the system clipboard and leave copy mode
+  / ?          search forward / backward
+  q            leave copy mode
+
+PLUGINS (tpm)
+  I            install plugins declared in tmux.conf
+  U            update plugins
+  M-u          remove plugins no longer declared
+
+FROM THE SHELL
+  tmux                 start a new session
+  tmux a               re-attach to the last session
+  tmux ls              list sessions
+  tmux-sessionizer     same as prefix + f
