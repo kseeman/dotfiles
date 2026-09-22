@@ -37,7 +37,7 @@ local on_attach = function(client, bufnr)
 end
 
 -- Note: jdtls is NOT included here because nvim-jdtls plugin manages it separately
-local servers = { "html", "cssls", "omnisharp", "ts_ls", "js_ls", "clangd" }
+local servers = { "html", "cssls", "omnisharp", "ts_ls", "js_ls", "clangd", "pyright", "ruff" }
 
 -- Configure each server with on_attach
 for _, server in ipairs(servers) do
@@ -45,6 +45,15 @@ for _, server in ipairs(servers) do
     on_attach = on_attach,
   })
 end
+
+-- ruff and pyright both answer hover, which stacks two windows on `K`. ruff's
+-- is only lint-rule docs, so it steps aside, as ruff's own docs recommend.
+vim.lsp.config("ruff", {
+  on_attach = function(client, bufnr)
+    client.server_capabilities.hoverProvider = false
+    on_attach(client, bufnr)
+  end,
+})
 
 vim.lsp.enable(servers)
 
