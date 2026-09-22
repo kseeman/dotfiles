@@ -5,3 +5,10 @@ nvim/lua/local-commands.lua
 claude/**/*.local.*
 claude/settings.local.json
 claude/**/.credentials.json
+
+# Written by Claude Code through the ~/.claude/skills symlink: account-synced
+# skills, named after account/org IDs. Never ours to track.
+claude/skills/synced/
+
+# Session worktrees created by Claude Code inside the repo
+.claude/worktrees/
