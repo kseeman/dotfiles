@@ -65,13 +65,19 @@ return {
 
         -- `item.col` is derived from the target line's text, so it is 1 whenever the
         -- buffer was still empty at that point. The untouched LSP range rides along
-        -- on `user_data`, and that stays right either way.
+        -- on `user_data`, and that stays right either way -- but its `character` is
+        -- in the client's position encoding (UTF-16 for jdtls), not bytes, so it is
+        -- converted against the line once the line is actually there.
         local range = item.user_data
           and (item.user_data.range or item.user_data.targetSelectionRange)
-        local col = range and range.start.character or (item.col - 1)
+        local client = list.context
+          and vim.lsp.get_clients({ bufnr = list.context.bufnr, name = 'jdtls' })[1]
+        local encoding = client and client.offset_encoding or 'utf-16'
 
         local function place(row)
           local line = vim.api.nvim_buf_get_lines(target, row - 1, row, false)[1] or ''
+          local col = range and vim.str_byteindex(line, encoding, range.start.character, false)
+            or (item.col - 1)
           vim.api.nvim_win_set_cursor(win, { row, math.max(math.min(col, #line), 0) })
           vim.api.nvim_win_call(win, function()
             vim.cmd('normal! zv')
@@ -142,7 +148,15 @@ return {
         vim.keymap.set('n', '<leader>D', jump('type_definition'), opts 'Go to type definition')
       end
 
-      local root_markers = { 'mvnw', 'gradlew', 'pom.xml', 'build.gradle', 'build.gradle.kts', '.git' }
+      -- Tiers, tried in order: a wrapper script or `.git` marks the top of a build,
+      -- whereas every submodule of a multi-module build has its own `pom.xml` or
+      -- `build.gradle`. Testing all markers at once would root each submodule
+      -- separately and start a JVM per submodule. Bare build files are the fallback
+      -- for a project that has neither.
+      local root_markers = {
+        { 'mvnw', 'gradlew', '.git' },
+        { 'pom.xml', 'build.gradle', 'build.gradle.kts' },
+      }
 
       -- Everything below `java` is an eclipse.jdt.ls setting and must be nested
       -- there. Keys placed at the root of `settings` are silently ignored.
@@ -206,11 +220,20 @@ return {
 
         -- Per buffer, not per cwd: one nvim session can span several projects, and
         -- each needs its own jdtls client and its own workspace data directory.
-        local root_dir = require('jdtls.setup').find_root(root_markers, vim.api.nvim_buf_get_name(bufnr))
+        -- `jdt://` buffers are java too, but nvim-jdtls attaches those itself, and
+        -- `vim.fs.root` would resolve such a name against the cwd.
+        if not vim.startswith(vim.uri_from_bufnr(bufnr), 'file://') then
+          return
+        end
+        local root_dir = vim.fs.root(bufnr, root_markers)
         if not root_dir then
           return
         end
-        local workspace_dir = home .. '/.cache/jdtls/workspace/' .. vim.fn.fnamemodify(root_dir, ':p:h:t')
+        -- The basename keeps the directory recognisable; the hash keeps two
+        -- projects that share one (`~/work/api`, `~/personal/api`) from sharing
+        -- an index, which two live jdtls processes would corrupt.
+        local workspace_dir = home .. '/.cache/jdtls/workspace/'
+          .. vim.fn.fnamemodify(root_dir, ':t') .. '-' .. vim.fn.sha256(root_dir):sub(1, 8)
 
         jdtls.start_or_attach({
           cmd = {
