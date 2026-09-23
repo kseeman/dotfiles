@@ -17,7 +17,9 @@ set -euo pipefail
 
 # Where projects live. Roots that don't exist are skipped, so this list is safe
 # to share between machines — note that on Linux these are case-sensitive, so
-# ~/Repos and ~/repos are different directories and both are listed.
+# ~/Repos and ~/repos are different directories and both are listed. On a
+# case-insensitive filesystem they are one directory under two names, which
+# dedupe_roots below collapses.
 #
 # Each root is searched exactly DEPTH levels down, so a nested layout needs the
 # containing directory listed as its own root rather than a deeper DEPTH:
@@ -49,10 +51,31 @@ fi
 # project directories themselves, not their contents.
 DEPTH=1
 
+# Two roots can name the same directory: macOS filesystems are case-insensitive
+# by default, so ~/Repos and ~/repos are one directory reached by two spellings.
+# find echoes back whichever spelling it was given, so every project would be
+# listed twice — and `sort -u` cannot tell, because the strings really do
+# differ. Only device and inode settle it, which is what `-ef` compares.
+dedupe_roots() {
+    local path kept unique=()
+    for path in "${SEARCH_PATHS[@]}"; do
+        for kept in ${unique[@]+"${unique[@]}"}; do
+            [[ "$path" -ef "$kept" ]] && continue 2
+        done
+        unique+=("$path")
+    done
+    SEARCH_PATHS=("${unique[@]}")
+}
+
+dedupe_roots
+
+# Roots are compared by identity rather than by name for the same reason: a
+# child found under one spelling of a root can be another root under a
+# different spelling, and `-ef` is false for a root that does not exist.
 is_search_root() {
     local candidate="$1" root
     for root in "${SEARCH_PATHS[@]}"; do
-        [[ "$candidate" == "$root" ]] && return 0
+        [[ "$candidate" -ef "$root" ]] && return 0
     done
     return 1
 }
