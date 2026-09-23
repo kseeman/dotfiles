@@ -6,6 +6,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a personal dotfiles repository covering Neovim, zsh, and terminal configuration across macOS and Linux. The Neovim configuration is built on NvChad v2.5 and features a custom multi-profile system that loads different plugin sets and configurations based on the development environment (default, .NET, Java, or Python).
 
+## Change workflow
+
+Isolate the work in a worktree, land it on `main` locally, stop for testing,
+push once it passes. **No pull requests.** There is no second reviewer here, so
+a PR adds a round trip and delivers nothing — this overrides the global
+preference for handing work over as a PR.
+
+The order is forced by how the repo is installed. `~/.dotfiles` symlinks to this
+checkout and everything else resolves through it — `~/.zshrc`,
+`~/.config/nvim`, `~/.local/bin/tmux-sessionizer`, the tmux config. **A change
+is live only once it is on `main` in this checkout.** Work sitting on a branch
+or in a worktree cannot be tested by using it, which is why the merge comes
+before the push rather than after.
+
+1. **Fetch before creating the worktree.** A new worktree branches from
+   `origin/main` as the local ref last saw it, so a stale ref bases the work on
+   an old commit and turns step 3 into a rebase.
+2. **Work in the worktree**, committing meaningful increments.
+3. **Fast-forward `main` to the branch** once validation passes. This step is
+   pre-authorised — it is the point of the workflow and does not need to be
+   asked for each time. It is also where authority ends.
+4. **Say the work is on `main` and ready to try, then stop.** Testing is the
+   user's, and it happens here, against the live symlinks.
+5. **Push `main`** once the user confirms. This is the step that reaches the
+   other machines, and pushing to the default branch is expected here —
+   it overrides the global rule against it. It still never happens in the same
+   breath as the merge.
+6. **Remove the worktree and branch.**
+
+Keep step 3 a real fast-forward:
+
+```sh
+git fetch origin main
+git -C .claude/worktrees/<name> rebase origin/main   # only if main moved
+git merge --ff-only <branch>
+```
+
+Rebase from *inside* the worktree — the branch is checked out there, so a
+`git rebase` run from this checkout fails. A cherry-pick reaches the same
+content but gives the commit a new SHA, after which `git branch -d` refuses the
+source branch as unmerged and only `git branch -D` removes it — which
+`protect-git.sh` blocks by design, leaving a branch that has to be deleted by
+hand.
+
 ## Cross-Platform Structure
 
 The repo supports macOS (Apple Silicon) and Arch-based Linux from one tree. Shared configuration lives at the top level; anything that genuinely differs per platform lives under `os/<os>/`.
