@@ -159,7 +159,15 @@ A newly created session gets an `editor` window with nvim started in it and a `s
 - **nvim is typed into the window's shell with `send-keys`, not run as the window's command.** As the window command, quitting nvim would close the window; this way it leaves a usable shell.
 - **The window is named with `-n`,** which turns `automatic-rename` off for it, so `editor` does not become `nvim` the moment the editor starts.
 
-Per-project layouts are one hook and no manifest format: an executable `~/.userconfig/tmux/layouts/<session-name>`, run with the session name and project directory after the session exists with its single `editor` window. It owns the layout from there. This mirrors `~/.userconfig/tmux/sessionizer-paths` — machine- and project-specific things live outside this public repo.
+Per-project layouts are one hook and no manifest format: an executable `~/.userconfig/tmux/layouts/<session-name>`, run with the session name, project directory and pinned profile after the session exists with its single `editor` window. It owns the layout from there. This mirrors `~/.userconfig/tmux/sessionizer-paths` — machine- and project-specific things live outside this public repo.
+
+A project pins which nvim profile its session opens with via a one-line `~/.userconfig/tmux/profiles/<session-name>` containing the profile name. Three things make this work the way it does:
+
+- It is delivered as `tmux new-session -e NVIM_PROFILE=…`, so it lands in the **session environment** and every pane inherits it. Prefixing the `nvim` command instead would only cover the `editor` window, and `nvim` typed in the shell window would get the wrong profile.
+- `NVIM_PROFILE` already outranks the persisted profile in `get_current_profile()`, so a pinned project beats whatever `:ProfileSwitch` last chose globally, with no change to the profile system.
+- **It is applied at session creation only.** Changing the pin means killing the session and reopening — there is no mechanism to retrofit an environment onto a running session's existing panes, and silently applying it to new panes only would be worse than not applying it at all.
+
+The profile name is deliberately **not** validated in the script: `profile-manager.lua` already warns and falls back to `default` for an unknown one, and validating here would mean a second copy of the profile list to keep in step.
 
 **The layout only runs on creation.** Attaching to a session that already exists must never disturb it; that session *is* the workspace.
 

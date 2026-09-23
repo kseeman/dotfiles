@@ -70,8 +70,17 @@ IN THE PROJECT PICKER (dev, or prefix + f)
 A PROJECT WORKSPACE
   New sessions open two windows: editor (nvim running) and shell. To give one
   project a different layout, drop an executable script at
-  ~/.userconfig/tmux/layouts/<session-name>; it is passed the session name and
-  the project directory, and takes over from there.
+  ~/.userconfig/tmux/layouts/<session-name>; it is passed the session name, the
+  project directory and the pinned nvim profile, and takes over from there.
+
+  To pin which nvim profile a project opens with, write the profile name into
+  ~/.userconfig/tmux/profiles/<session-name>:
+
+    echo java > ~/.userconfig/tmux/profiles/acme-api
+
+  It applies to every pane in that session, and is set when the session is
+  created — change it and you need to kill the session (^x in the picker) and
+  reopen for it to take effect.
 
 IN NEOVIM
   Starting nvim with no file shows the dashboard. s restores this directory's

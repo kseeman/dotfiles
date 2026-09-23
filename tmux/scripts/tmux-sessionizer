@@ -16,7 +16,16 @@
 #
 # In the picker: ● marks a project that already has a running session and those
 # sort first, enter opens, ctrl-x kills a session and refreshes in place, and
-# the preview pane shows the project's git state and README.
+# the preview pane shows the project's git state, README and pinned nvim
+# profile if it has one.
+#
+# A project pins its nvim profile with a one-line file named after the session:
+#
+#   echo java > ~/.userconfig/tmux/profiles/acme-api
+#
+# That becomes NVIM_PROFILE in the session environment, which outranks the
+# profile persisted by :ProfileSwitch. It is applied when the session is
+# *created*, so changing the pin means killing the session and reopening it.
 #
 # Bound to prefix + f in tmux.conf, on PATH via ~/.local/bin, and wrapped by the
 # `dev` shell function. Neovim's dashboard "Projects" action runs it too, so the
@@ -111,6 +120,32 @@ find_projects() {
 }
 
 # -----------------------------------------------------------------------------
+# Per-project Neovim profile
+# -----------------------------------------------------------------------------
+
+# A project can pin which nvim profile its session opens with: one line naming
+# the profile, in a file named after the session.
+#
+#   echo java > ~/.userconfig/tmux/profiles/acme-api
+#
+# The name is not validated here on purpose. profile-manager.lua already warns
+# and falls back to "default" for an unknown one, and checking here would mean a
+# second copy of the profile list that has to be kept in step with nvim's.
+PROFILES_DIR="$HOME/.userconfig/tmux/profiles"
+
+profile_for() {
+    local file="$PROFILES_DIR/$1" profile
+
+    [[ -r "$file" ]] || return 0
+
+    # First non-blank, non-comment line, trimmed.
+    profile="$(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$file" |
+        grep -m1 -v '^$' || true)"
+
+    printf '%s' "$profile"
+}
+
+# -----------------------------------------------------------------------------
 # Session naming
 # -----------------------------------------------------------------------------
 
@@ -179,10 +214,17 @@ fzf_list() {
 # stays cheap: no network, no full-repo walks, and the README is truncated
 # rather than paged.
 preview_project() {
-    local dir="$1" branch dirty readme
+    local dir="$1" branch dirty readme profile
 
     printf '\033[1m%s\033[0m\n' "$(basename "$dir")"
-    printf '\033[2m%s\033[0m\n\n' "${dir/#$HOME/$TILDE}"
+    printf '\033[2m%s\033[0m\n' "${dir/#$HOME/$TILDE}"
+
+    # Shown so a pinned profile is visible before opening the project, rather
+    # than only being discovered once nvim is up.
+    profile="$(profile_for "$(session_name_for "$dir")")"
+    [[ -n "$profile" ]] && printf '\033[36m󰏗 %s\033[0m\n' "$profile"
+
+    printf '\n'
 
     if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
         branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null)"
@@ -328,12 +370,24 @@ selected_name="$(session_name_for "$selected")"
 # The layout only runs on creation. Attaching to a session that already exists
 # must not disturb what is open in it — that session is the workspace.
 if ! tmux has-session -t="$selected_name" 2>/dev/null; then
-    tmux new-session -ds "$selected_name" -c "$selected" -n editor
+    profile="$(profile_for "$selected_name")"
+
+    # -e puts NVIM_PROFILE in the *session* environment, so every pane inherits
+    # it and nvim picks the right profile wherever it is started — not only in
+    # the editor window. An empty value is not the same as unset to tmux, so the
+    # flag is omitted entirely when no profile is pinned.
+    new_session_opts=()
+    [[ -n "$profile" ]] && new_session_opts=(-e "NVIM_PROFILE=$profile")
+
+    tmux new-session -ds "$selected_name" -c "$selected" -n editor \
+        ${new_session_opts[@]+"${new_session_opts[@]}"}
 
     layout="$LAYOUTS_DIR/$selected_name"
 
+    # The profile is passed on as a third argument so a custom layout can use it
+    # without reading the file again.
     if [[ -x "$layout" ]]; then
-        "$layout" "$selected_name" "$selected"
+        "$layout" "$selected_name" "$selected" "$profile"
     else
         default_layout "$selected_name" "$selected"
     fi
