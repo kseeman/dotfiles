@@ -10,8 +10,12 @@
 #
 #   tmux-sessionizer            pick interactively with fzf
 #   tmux-sessionizer ~/Repos/x  jump straight to that directory
+#   tmux-sessionizer dotfiles   pick by name, skipping fzf when it's unambiguous
+#   tmux-sessionizer --list     print the project list and exit
 #
-# Bound to prefix + f in tmux.conf, and on PATH via ~/.local/bin.
+# Bound to prefix + f in tmux.conf, on PATH via ~/.local/bin, and wrapped by the
+# `dev` shell function. Neovim's dashboard "Projects" action runs it too, so the
+# project list has exactly one definition.
 
 set -euo pipefail
 
@@ -101,13 +105,46 @@ find_projects() {
     done
 }
 
-if [[ $# -eq 1 ]]; then
-    selected="$1"
-else
-    selected="$(find_projects | sort -u | fzf --reverse --prompt='project> ')"
+# A new session gets a default two-window layout. Per-project layouts belong in
+# ~/.userconfig/tmux/layouts/<session-name> — an executable script, run with the
+# session name and the project directory as its two arguments, after the session
+# has been created with a single `editor` window. It owns the layout from there.
+#
+# That one hook is the whole extension mechanism: a project that wants an `api`
+# window running a server adds a script, and everything else keeps the default.
+# There is deliberately no manifest format to learn.
+LAYOUTS_DIR="$HOME/.userconfig/tmux/layouts"
+
+# nvim is typed into the editor window's shell rather than run as the window's
+# command, so quitting it leaves a usable shell behind instead of closing the
+# window out from under you.
+default_layout() {
+    local session="$1" dir="$2"
+
+    tmux send-keys -t "$session:editor" nvim C-m
+    tmux new-window -d -a -t "$session:editor" -n shell -c "$dir"
+}
+
+# Printing the list is how Neovim's dashboard reuses this script's idea of what
+# a project is, rather than keeping a second copy of the roots.
+if [[ "${1:-}" == "--list" ]]; then
+    find_projects | sort -u
+    exit 0
 fi
 
-# Empty when fzf is cancelled with Esc or C-c.
+if [[ $# -gt 0 && -d "$1" ]]; then
+    selected="$1"
+elif [[ $# -gt 0 ]]; then
+    # A non-directory argument is a query. --select-1 takes the match outright
+    # when there is exactly one, so `dev dotfiles` never shows a one-item menu;
+    # --exit-0 gives up quietly when nothing matches.
+    selected="$(find_projects | sort -u |
+        fzf --reverse --prompt='project> ' --query="$1" --select-1 --exit-0 || true)"
+else
+    selected="$(find_projects | sort -u | fzf --reverse --prompt='project> ' || true)"
+fi
+
+# Empty when fzf is cancelled with Esc or C-c, or when a query matched nothing.
 [[ -n "${selected:-}" ]] || exit 0
 
 # tmux treats dots as host/port separators in target names, so they must go.
@@ -115,8 +152,19 @@ selected_name="$(basename "$selected" | tr '. ' '__')"
 
 # Start a detached session if one isn't already running under that name. Guarded
 # because `tmux has-session` fails when no server is running at all.
+#
+# The layout only runs on creation. Attaching to a session that already exists
+# must not disturb what is open in it — that session is the workspace.
 if ! tmux has-session -t="$selected_name" 2>/dev/null; then
-    tmux new-session -ds "$selected_name" -c "$selected"
+    tmux new-session -ds "$selected_name" -c "$selected" -n editor
+
+    layout="$LAYOUTS_DIR/$selected_name"
+
+    if [[ -x "$layout" ]]; then
+        "$layout" "$selected_name" "$selected"
+    else
+        default_layout "$selected_name" "$selected"
+    fi
 fi
 
 if [[ -z "${TMUX:-}" ]]; then

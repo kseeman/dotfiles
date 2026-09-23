@@ -85,6 +85,34 @@ show_fastfetch() {
 
 
 # -----------------------------------------------------------------------------
+# Projects
+# -----------------------------------------------------------------------------
+
+# Pick a project and enter its tmux workspace. The implementation is entirely in
+# tmux-sessionizer (also bound to prefix + f, and linked into ~/.local/bin by
+# the installer); this is the name that's memorable from a cold shell.
+#
+#   dev             pick from the list with fzf
+#   dev dotfiles    go straight there when the name matches one project
+#   dev ~/Repos/x   go straight to that directory
+#
+# A function rather than an alias so a missing script says so, instead of
+# leaving "command not found: tmux-sessionizer" to be interpreted.
+#
+# Nothing here needs to know whether a tmux server is running or whether this
+# shell is already inside one — the script attaches, switches or starts as
+# appropriate, so `dev` behaves the same either way.
+dev() {
+    if ! command -v tmux-sessionizer &>/dev/null; then
+        echo "dev: tmux-sessionizer is not on PATH. Run ~/.dotfiles/install.sh." >&2
+        return 1
+    fi
+
+    tmux-sessionizer "$@"
+}
+
+
+# -----------------------------------------------------------------------------
 # Startup display
 # -----------------------------------------------------------------------------
 

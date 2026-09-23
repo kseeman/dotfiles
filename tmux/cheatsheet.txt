@@ -30,9 +30,14 @@ SESSIONS
   s            session tree
   Space        last session (toggle)
   ( / )        previous / next session
+  N            new session (prompts for a name)
   $            rename session
+  X            kill this session
   d            detach
   C-s / C-r    save / restore all sessions (tmux-resurrect)
+
+GIT
+  g            lazygit, in a popup, at the current pane's directory
 
 COPY MODE
   [            enter copy mode (scroll with the mouse, or j/k, C-u/C-d)
@@ -51,4 +56,16 @@ FROM THE SHELL
   tmux                 start a new session
   tmux a               re-attach to the last session
   tmux ls              list sessions
-  tmux-sessionizer     same as prefix + f
+  dev                  pick a project and enter its workspace
+  dev <name>           go straight there when the name is unambiguous
+  tmux-sessionizer     what dev and prefix + f both run
+
+A PROJECT WORKSPACE
+  New sessions open two windows: editor (nvim running) and shell. To give one
+  project a different layout, drop an executable script at
+  ~/.userconfig/tmux/layouts/<session-name>; it is passed the session name and
+  the project directory, and takes over from there.
+
+IN NEOVIM
+  Starting nvim with no file shows the dashboard. s restores this directory's
+  session, p switches project. <leader>qs restores from anywhere.

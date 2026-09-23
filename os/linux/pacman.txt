@@ -16,6 +16,9 @@ bat
 ripgrep
 jq
 tree
+# Opened in a popup by tmux's prefix + g. Optional — that binding reports its
+# absence rather than failing — but listed so a fresh machine has it.
+lazygit
 tmux
 # Builds the venv the nvim python profile runs its Jupyter host from (see
 # install.sh).
