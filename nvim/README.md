@@ -173,7 +173,7 @@ It then appears in the `<leader>ji` picker. After the first install (or a
 ```
 .
 ├── init.lua                 # Main configuration entry point
-├── lazy-lock.json          # Plugin version lock file
+├── lazy-lock.<profile>.json # Plugin version lock file, one per profile
 ├── lua/
 │   ├── profile-manager.lua  # Profile management logic
 │   ├── profiles/

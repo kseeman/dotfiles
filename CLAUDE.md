@@ -480,12 +480,35 @@ In the python profile, `.py` files format on save through `format_on_save`. Note
 
 ### Validating headless
 
-NvChad loads lspconfig on `User FilePost`, which only fires after `UIEnter`, so under `--headless` no LSP ever attaches unless the event is fired by hand. Also, **any nvim run rewrites `nvim/lazy-lock.json` from the plugins the current profile loaded**, even with `XDG_DATA_HOME` pointed elsewhere, because the lockfile lives in the config dir. Check `git diff nvim/lazy-lock.json` after testing.
+NvChad loads lspconfig on `User FilePost`, which only fires after `UIEnter`, so under `--headless` no LSP ever attaches unless the event is fired by hand. A test run can still rewrite the current profile's lockfile — the lockfile lives in the config dir, so pointing `XDG_DATA_HOME` elsewhere does not spare it — but only that profile's, so `git diff nvim/` after testing shows one file at most. See **Lockfiles are per profile** below.
+
+## Lockfiles are per profile
+
+`nvim/lazy-lock.<profile>.json` — one each for `default`, `dotnet`, `java` and `python`. All four are tracked. There is deliberately no `lazy-lock.json`.
+
+**A single lockfile cannot work with this profile system.** `lazy/manage/lock.lua` loads the lockfile and then drops every entry not in the *current* spec:
+
+```lua
+for name in pairs(M.lock) do
+  if not (Config.spec.disabled[name] or Config.spec.ignore_installed[name]) then
+    M.lock[name] = nil
+  end
+end
+```
+
+A plugin belonging to another profile is in neither set, so it is purged. `install`, `update` and `clean` all trigger that write, and switching profiles auto-installs the new profile's missing plugins at startup — which is a write. So whichever profile ran last won, the other three silently lost their pins, and the file thrashed on every switch.
+
+`configs/lazy.lua` sets lazy's `lockfile` option per profile, keyed on `vim.g.current_nvim_profile`. That variable is the *resolved* profile (already defaulted if an unknown one was requested), and `init.lua` sets it before requiring the module, so the filename can never name a profile that does not exist.
+
+Consequences:
+
+- **A shared plugin can sit at different commits in different profiles.** Updating under `dotnet` does not repin it for `java`. That is the intended trade: each profile's set stays internally consistent and reproducible.
+- **Adding a profile means adding a lockfile.** It is created on that profile's first install; seed it by copying an existing one if you want the shared pins carried over.
+- Rejected alternative: declaring every profile's plugins always with `enabled = false` for inactive ones, which would keep the entries. lazy merges specs by plugin name, so the four profiles' `nvim-treesitter` `ensure_installed` lists would merge into one — the exact breakage `plugins/shared.lua` is written to avoid.
 
 ## Git Ignore Patterns
 
 Important git-ignored files:
-- `nvim/lazy-lock.json` - Plugin version lockfile (tracked, but may have local changes)
 - `nvim/lua/local-commands.lua` - Project-specific commands (should be git-ignored for work-specific code)
 
 ## Mason Package Dependencies
