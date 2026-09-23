@@ -39,6 +39,23 @@ return {
     opts = require "configs.conform",
   },
 
+  -- Session persistence, scoped to the current directory — which, coming in
+  -- through tmux-sessionizer, is the project root.
+  --
+  -- Saving is automatic on exit; restoring never is. That asymmetry is the
+  -- point: an automatic restore would fire when opening a single file from
+  -- anywhere and pull in whatever was last open under that directory. The
+  -- dashboard's `s` and <leader>qs ask for it instead (see mappings.lua).
+  --
+  -- `event` rather than lazy-loading on those keys: the save autocmd has to be
+  -- registered by the time you quit, and a session you never explicitly
+  -- restored still needs to have been written.
+  {
+    "folke/persistence.nvim",
+    event = "BufReadPre",
+    opts = {},
+  },
+
   -- LSP
   {
     "neovim/nvim-lspconfig",

@@ -172,6 +172,29 @@ map("n", "<leader>fp", function()
   vim.notify('Copied: ' .. path)
 end, { desc = "Copy file path to clipboard" })
 
+-- Session persistence (persistence.nvim). Restoring is always explicit — see
+-- the spec in plugins/shared.lua for why. <leader>q is free: NvChad binds
+-- nothing under it, and <leader>p is already profiles and NvChad's terminals.
+map("n", "<leader>qs", function()
+  require("persistence").load()
+end, { desc = "Session restore for this directory" })
+
+map("n", "<leader>ql", function()
+  require("persistence").load { last = true }
+end, { desc = "Session restore last used" })
+
+-- Leaves the session on disk as it was, rather than overwriting it with
+-- whatever this instance happens to have open.
+map("n", "<leader>qd", function()
+  require("persistence").stop()
+end, { desc = "Session don't save on exit" })
+
+-- Switch projects. Inside tmux this hands off to tmux-sessionizer, the same
+-- picker prefix + f and `dev` use.
+map("n", "<leader>fP", function()
+  require("configs.projects").pick()
+end, { desc = "Find project" })
+
 -- Profile switching keymaps
 map("n", "<leader>ps", ":ProfileSwitch<CR>", { desc = "Switch profile" })
 map("n", "<leader>pr", ":ProfileRestart<CR>", { desc = "Restart with profile" })

@@ -137,6 +137,17 @@ tmux -L boot kill-server
 
 `tmux/scripts/tmux-sessionizer` fuzzy-finds a project under the `SEARCH_PATHS` array (currently `~/Repos` and `~/dotfiles`) and attaches to a session named after it, creating it if needed. Bound to `prefix + f` and linked into `~/.local/bin`, so it works from a plain shell too. It handles being run both inside tmux (`switch-client`) and outside (`attach-session`), and strips dots from session names since tmux treats them as host/port separators.
 
+**It is the single definition of what a project is**, and everything else routes through it rather than keeping a second list: the `dev` shell function (`zsh/functions.zsh`), `prefix + f`, and Neovim's dashboard "Projects" action via `nvim/lua/configs/projects.lua`. `--list` exists for that last one — it prints the projects and exits, so nvim can offer the same set without reimplementing the roots. A non-directory argument is treated as a query rather than a path, and `fzf --select-1` takes an unambiguous match outright, which is what makes `dev dotfiles` skip the menu.
+
+A newly created session gets an `editor` window with nvim started in it and a `shell` window. Two details are deliberate:
+
+- **nvim is typed into the window's shell with `send-keys`, not run as the window's command.** As the window command, quitting nvim would close the window; this way it leaves a usable shell.
+- **The window is named with `-n`,** which turns `automatic-rename` off for it, so `editor` does not become `nvim` the moment the editor starts.
+
+Per-project layouts are one hook and no manifest format: an executable `~/.userconfig/tmux/layouts/<session-name>`, run with the session name and project directory after the session exists with its single `editor` window. It owns the layout from there. This mirrors `~/.userconfig/tmux/sessionizer-paths` — machine- and project-specific things live outside this public repo.
+
+**The layout only runs on creation.** Attaching to a session that already exists must never disturb it; that session *is* the workspace.
+
 #### Wallbash theming (Linux)
 
 `os/linux/wallbash/tmux.dcol` is a wallbash template that regenerates `~/.config/tmux/wallbash.conf` from the current wallpaper on every theme, wallpaper or mode change, then re-sources it into any running server via its header-line command. `tmux.conf` sources it with `-q`, so macOS and non-HyDE machines fall back to the plain terminal-palette styling.
@@ -281,6 +292,28 @@ The profile manager includes OS and architecture detection that's crucial for to
 - `M.get_config_dir_name()` returns the correct jdtls config directory name (e.g., `config_mac_arm` for Apple Silicon)
 
 **Critical for jdtls setup**: The Java profile uses these functions to dynamically select the correct jdtls configuration directory. On Apple Silicon, this must be `config_mac_arm`, not `config_mac`.
+
+## Dashboard and session persistence
+
+The split this setup is built around: **tmux owns projects, workspaces and processes; Neovim owns editing and navigation.** Anything that looks like project management inside nvim should hand off to tmux rather than grow a second implementation — which is what `nvim/lua/configs/projects.lua` is, and why there is no project-picker plugin.
+
+### nvdash
+
+The landing screen is NvChad's own `nvdash`, configured in `chadrc.lua`; there is no dashboard plugin. `header` is inherited from NvChad's defaults and only `buttons` is overridden — `buttons` is a list, so `tbl_deep_extend` replaces it wholesale rather than merging.
+
+**Keep the footer line short.** nvdash centres every button on the width of the *widest* one, and the column it computes is `winw/2 - w/2 - 6`. A footer wider than the window drives that negative and `nvim_win_set_cursor` throws `Invalid cursor column: out of range` before the dashboard ever draws. Putting the cwd in the footer is enough to trigger it in a normal terminal; the cwd is on the statusline anyway.
+
+A button's `cmd` is a string run as an Ex command (`vim.cmd`), not a function, so anything non-trivial goes through `lua require(...)`.
+
+### persistence.nvim
+
+Sessions save automatically on exit and are **never restored automatically**. That asymmetry is the whole design: an automatic restore fires when opening a single file from anywhere and drags in whatever was last open under that directory. Restoring is `s` on the dashboard, or `<leader>qs`.
+
+Sessions are keyed by cwd **and git branch**, so the same checkout on two branches has two sessions, and a worktree has its own. Coming in through the sessionizer the cwd is the project root, which is what makes this project-scoped for free.
+
+`<leader>q` was chosen because NvChad binds nothing under it; `<leader>p` is already profile switching plus NvChad's terminal picker.
+
+**kulala.nvim declares `event = { "SessionLoadPost", "VimLeavePre" }` in its own upstream spec**, so every session restore loads it and runs its one-time tree-sitter grammar setup. A restore that suddenly prints git errors is kulala's grammar clone, not the session — check `~/.local/share/nvim/kulala.nvim/tree-sitter-kulala-http` has an `origin` remote.
 
 ## LSP Configuration Gotchas
 
