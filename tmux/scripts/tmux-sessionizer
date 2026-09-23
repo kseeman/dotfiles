@@ -11,7 +11,12 @@
 #   tmux-sessionizer            pick interactively with fzf
 #   tmux-sessionizer ~/Repos/x  jump straight to that directory
 #   tmux-sessionizer dotfiles   pick by name, skipping fzf when it's unambiguous
+#   tmux-sessionizer -          switch back to the last session, no picker
 #   tmux-sessionizer --list     print the project list and exit
+#
+# In the picker: ● marks a project that already has a running session and those
+# sort first, enter opens, ctrl-x kills a session and refreshes in place, and
+# the preview pane shows the project's git state and README.
 #
 # Bound to prefix + f in tmux.conf, on PATH via ~/.local/bin, and wrapped by the
 # `dev` shell function. Neovim's dashboard "Projects" action runs it too, so the
@@ -105,6 +110,148 @@ find_projects() {
     done
 }
 
+# -----------------------------------------------------------------------------
+# Session naming
+# -----------------------------------------------------------------------------
+
+# tmux treats dots as host/port separators in target names, so they must go.
+# Every place that needs a session name goes through here, because the picker,
+# the kill binding and the attach at the bottom must all agree on the mapping.
+session_name_for() {
+    basename "$1" | tr '. ' '__'
+}
+
+# `tmux list-sessions` fails outright when no server is running, which is an
+# ordinary state here rather than an error.
+running_sessions() {
+    tmux list-sessions -F '#{session_name}' 2>/dev/null || true
+}
+
+# -----------------------------------------------------------------------------
+# Picker
+# -----------------------------------------------------------------------------
+
+# fzf shells back into this script for the preview pane and the kill binding, so
+# it needs a way to name itself. $0 is the path it was invoked by, which is the
+# ~/.local/bin symlink from a shell and the repo path from tmux — both runnable.
+SELF="$0"
+
+# Paths are shown ~-shortened. The tilde goes through a variable because an
+# escaped one (${path/#$HOME/\~}) keeps its backslash in the result rather than
+# being unescaped — the replacement half of ${var/pat/repl} is not re-parsed.
+TILDE='~'
+
+# Decorate the project list for fzf.
+#
+# Each line is "<display><TAB><path>": fzf shows and searches field 1 via
+# --with-nth and hands field 2 to the preview and kill bindings, so the path is
+# never reconstructed from the display text by parsing it back apart.
+#
+# The parent directory is shown because the basename alone is ambiguous — with
+# several roots configured, ~/repos/personal/dotfiles and ~/Repos/dotfiles are
+# two different projects with one name.
+#
+# Projects with a live session are marked and sorted first, so whatever is
+# already warm is the nearest keystroke. The markers are plain glyphs rather
+# than colours, which keeps the list following the terminal palette.
+fzf_list() {
+    local running path name parent
+    local -a live=() idle=()
+
+    running="$(running_sessions)"
+
+    while IFS= read -r path; do
+        name="$(basename "$path")"
+        parent="$(dirname "$path")"
+        parent="${parent/#$HOME/$TILDE}"
+
+        if printf '%s\n' "$running" | grep -qxF "$(session_name_for "$path")"; then
+            live+=("$(printf '● %-28s %s\t%s' "$name" "$parent" "$path")")
+        else
+            idle+=("$(printf '○ %-28s %s\t%s' "$name" "$parent" "$path")")
+        fi
+    done < <(find_projects | sort -u)
+
+    printf '%s\n' ${live[@]+"${live[@]}"} ${idle[@]+"${idle[@]}"}
+}
+
+# Rendered in fzf's preview pane. This runs on every cursor movement, so it
+# stays cheap: no network, no full-repo walks, and the README is truncated
+# rather than paged.
+preview_project() {
+    local dir="$1" branch dirty readme
+
+    printf '\033[1m%s\033[0m\n' "$(basename "$dir")"
+    printf '\033[2m%s\033[0m\n\n' "${dir/#$HOME/$TILDE}"
+
+    if git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+        branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+        dirty="$(git -C "$dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+
+        printf '\033[33m %s\033[0m' "$branch"
+        [[ "$dirty" != 0 ]] && printf '  \033[31m%s dirty\033[0m' "$dirty"
+        printf '\n\n'
+
+        git -C "$dir" log -3 --color=always --format='  %C(dim)%h%C(reset) %s' 2>/dev/null
+        printf '\n'
+    fi
+
+    readme="$(find "$dir" -maxdepth 1 -iname 'README*' -type f 2>/dev/null | head -1)"
+
+    if [[ -n "$readme" ]]; then
+        if command -v bat >/dev/null 2>&1; then
+            # --theme=ansi keeps bat inside the terminal's 16 colours. Its
+            # default theme is hardcoded truecolor, which would ignore the
+            # active tokyonight/HyDE palette and clash with everything else.
+            command bat --style=plain --color=always --theme=ansi \
+                --line-range=:40 "$readme"
+        else
+            head -40 "$readme"
+        fi
+    else
+        ls -A "$dir" 2>/dev/null | head -20
+    fi
+}
+
+# Open the picker and print the chosen path. A query pre-fills it, and
+# --select-1 takes an unambiguous match outright so `dev dotfiles` never shows a
+# one-item menu; --exit-0 gives up quietly when nothing matches.
+#
+# ctrl-/ is bound twice because terminals disagree about what it sends.
+#
+# The `<55(…)` in --preview-window moves the preview above the list in a narrow
+# pane. That number is the width of the *preview window*, not of the terminal —
+# so 55 is 55% of the ~100-column terminal this is meant to switch at, and a
+# threshold written as the terminal width would fire far too early.
+pick_project() {
+    local query="${1:-}"
+    local -a query_opts=()
+
+    [[ -n "$query" ]] && query_opts=(--query="$query" --select-1 --exit-0)
+
+    fzf_list | fzf \
+        --delimiter='\t' \
+        --with-nth=1 \
+        --reverse \
+        --border=rounded \
+        --border-label=' projects ' \
+        --prompt='project ❯ ' \
+        --pointer='▸' \
+        --info=inline-right \
+        --header='enter open · ^x kill · ^/ preview' \
+        --preview="'$SELF' --preview {2}" \
+        --preview-window='right,55%,border-left,wrap,<55(up,45%,border-bottom)' \
+        --bind="ctrl-x:execute-silent('$SELF' --kill {2})+reload('$SELF' --fzf-list)" \
+        --bind='ctrl-/:change-preview-window(hidden|)' \
+        --bind='ctrl-_:change-preview-window(hidden|)' \
+        ${query_opts[@]+"${query_opts[@]}"} |
+        cut -f2
+}
+
+# -----------------------------------------------------------------------------
+# Layout
+# -----------------------------------------------------------------------------
+
 # A new session gets a default two-window layout. Per-project layouts belong in
 # ~/.userconfig/tmux/layouts/<session-name> — an executable script, run with the
 # session name and the project directory as its two arguments, after the session
@@ -125,30 +272,55 @@ default_layout() {
     tmux new-window -d -a -t "$session:editor" -n shell -c "$dir"
 }
 
-# Printing the list is how Neovim's dashboard reuses this script's idea of what
-# a project is, rather than keeping a second copy of the roots.
-if [[ "${1:-}" == "--list" ]]; then
-    find_projects | sort -u
-    exit 0
-fi
+# -----------------------------------------------------------------------------
+# Entry points
+# -----------------------------------------------------------------------------
+
+# --list is the plain, stable one: Neovim's dashboard reads it so the project
+# list has a single definition. The others exist because fzf re-invokes this
+# script for its preview and bindings, and are not meant to be typed.
+case "${1:-}" in
+    --list)
+        find_projects | sort -u
+        exit 0
+        ;;
+    --fzf-list)
+        fzf_list
+        exit 0
+        ;;
+    --preview)
+        preview_project "$2"
+        exit 0
+        ;;
+    --kill)
+        # `=` makes the target an exact name match rather than a prefix.
+        tmux kill-session -t "=$(session_name_for "$2")" 2>/dev/null || true
+        exit 0
+        ;;
+    -)
+        # Back to wherever you just were, without opening the picker at all.
+        if [[ -n "${TMUX:-}" ]]; then
+            tmux switch-client -l
+        else
+            # With no -t, tmux attaches to the most recently used session.
+            tmux attach-session
+        fi
+        exit 0
+        ;;
+esac
 
 if [[ $# -gt 0 && -d "$1" ]]; then
     selected="$1"
 elif [[ $# -gt 0 ]]; then
-    # A non-directory argument is a query. --select-1 takes the match outright
-    # when there is exactly one, so `dev dotfiles` never shows a one-item menu;
-    # --exit-0 gives up quietly when nothing matches.
-    selected="$(find_projects | sort -u |
-        fzf --reverse --prompt='project> ' --query="$1" --select-1 --exit-0 || true)"
+    selected="$(pick_project "$1" || true)"
 else
-    selected="$(find_projects | sort -u | fzf --reverse --prompt='project> ' || true)"
+    selected="$(pick_project || true)"
 fi
 
 # Empty when fzf is cancelled with Esc or C-c, or when a query matched nothing.
 [[ -n "${selected:-}" ]] || exit 0
 
-# tmux treats dots as host/port separators in target names, so they must go.
-selected_name="$(basename "$selected" | tr '. ' '__')"
+selected_name="$(session_name_for "$selected")"
 
 # Start a detached session if one isn't already running under that name. Guarded
 # because `tmux has-session` fails when no server is running at all.

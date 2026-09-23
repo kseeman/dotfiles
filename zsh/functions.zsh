@@ -95,6 +95,10 @@ show_fastfetch() {
 #   dev             pick from the list with fzf
 #   dev dotfiles    go straight there when the name matches one project
 #   dev ~/Repos/x   go straight to that directory
+#   dev -           back to the last session, without opening the picker
+#
+# In the picker, ● marks a project that already has a session (those sort
+# first), ctrl-x kills one, and the preview shows git state and the README.
 #
 # A function rather than an alias so a missing script says so, instead of
 # leaving "command not found: tmux-sessionizer" to be interpreted.

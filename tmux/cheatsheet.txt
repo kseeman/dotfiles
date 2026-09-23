@@ -58,7 +58,14 @@ FROM THE SHELL
   tmux ls              list sessions
   dev                  pick a project and enter its workspace
   dev <name>           go straight there when the name is unambiguous
+  dev -                back to the last session, no picker
   tmux-sessionizer     what dev and prefix + f both run
+
+IN THE PROJECT PICKER (dev, or prefix + f)
+  ●  /  ○      has a running session / doesn't; running ones sort first
+  enter        open it
+  ctrl-x       kill that project's session, list refreshes in place
+  ctrl-/       show / hide the preview (git state and README)
 
 A PROJECT WORKSPACE
   New sessions open two windows: editor (nvim running) and shell. To give one
