@@ -457,6 +457,7 @@ if [[ ! -d "$HOME/.userconfig" ]]; then
     else
         mkdir -p "$HOME/.userconfig/zsh/extensions"
         mkdir -p "$HOME/.userconfig/zsh/secrets"
+        mkdir -p "$HOME/.userconfig/nvim/projects"
 
         cat > "$HOME/.userconfig/README.md" <<EOF
 # Local User Configuration
@@ -473,6 +474,12 @@ Use:
 
 ~/.userconfig/zsh/secrets/
     Private environment variables and credentials
+
+~/.userconfig/nvim/local.lua
+    Machine-specific Neovim code: commands, keymaps, autocmds
+
+~/.userconfig/nvim/projects/<repo-dir-name>.lua
+    Per-project Neovim settings (a returned table), e.g. maven_test_args
 
 Do not commit this directory.
 EOF

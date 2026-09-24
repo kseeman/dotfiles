@@ -182,11 +182,18 @@ Changing a permission or hook means editing `claude/settings.json` and re-runnin
 
 ## Machine-specific configuration
 
-`~/.userconfig` is never tracked here, and is sourced at the end of shell
-startup:
+`~/.userconfig` is never tracked here. It holds everything local to a machine
+or a project, so it is the one directory to back up:
 
 ```
-~/.userconfig/zsh/local.zsh       Machine-specific settings
-~/.userconfig/zsh/extensions/     Work/project shell extensions
-~/.userconfig/zsh/secrets/        Private environment variables
+~/.userconfig/zsh/local.zsh            Machine-specific shell settings
+~/.userconfig/zsh/extensions/          Work/project shell extensions
+~/.userconfig/zsh/secrets/             Private environment variables
+~/.userconfig/tmux/sessionizer-paths   Extra project roots for the sessionizer
+~/.userconfig/tmux/profiles/<session>  nvim profile a project's session opens with
+~/.userconfig/tmux/layouts/<session>   Per-project window layout script
+~/.userconfig/nvim/local.lua           Machine-specific Neovim code
+~/.userconfig/nvim/projects/<repo>.lua Per-project Neovim settings
 ```
+
+It contains secrets, so keep backups encrypted and never publish it.
