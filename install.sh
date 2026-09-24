@@ -54,10 +54,30 @@ link_config() {
         return
     fi
 
-    if [[ -e "$target" && ! -L "$target" ]]; then
-        local backup="${target}.backup.$(date +%Y%m%d%H%M%S)"
+    # Anything already at the target is moved aside unless it is this link
+    # already, including someone's own symlink (e.g. ~/.zshrc into another
+    # dotfiles repo), which `ln -sfn` would otherwise replace without a trace.
+    # `-L` as well as `-e`, so a dangling symlink counts as something there.
+    local ours=false
+    if [[ -L "$target" ]]; then
+        local current
+        current="$(readlink "$target")"
+        if [[ "$current" == "$source" || "$current" == "$HOME/.dotfiles/"* || "$current" == "$DOTFILES_DIR/"* ]]; then
+            ours=true
+        fi
+    fi
 
-        info "Backing up existing $(basename "$target")"
+    if [[ "$ours" == false ]] && [[ -e "$target" || -L "$target" ]]; then
+        # <name>.pre-dotfiles is only ever the original, from before the first
+        # install -- what uninstall.sh puts back. Something appearing there
+        # after that (an app replacing the link with a file) gets a timestamped
+        # backup instead, so the original is never overwritten.
+        local backup="${target}.pre-dotfiles"
+        if [[ -e "$backup" || -L "$backup" ]]; then
+            backup="${target}.backup.$(date +%Y%m%d%H%M%S)"
+        fi
+
+        info "Backing up existing $(basename "$target") to $(basename "$backup")"
         run "mv '$target' '$backup'"
     fi
 

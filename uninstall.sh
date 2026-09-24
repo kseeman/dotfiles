@@ -5,9 +5,11 @@ set -euo pipefail
 # Undoes what install.sh put in place, and nothing it cannot be sure it put
 # there:
 #
-# - Every symlink pointing into this repo is removed, and the oldest backup
-#   link_config made of what it replaced (`<name>.backup.<timestamp>`) is moved
-#   back. The oldest, because that is the file from before the dotfiles.
+# - Every symlink pointing into this repo is removed, and what link_config
+#   moved aside for it is put back: `<name>.pre-dotfiles`, the original from
+#   before the first install. Installs from before that name existed made only
+#   `<name>.backup.<timestamp>`; for those the most recent is used, since it is
+#   what was in place just before the dotfiles last took over.
 # - ~/.claude/settings.json loses the hook registrations for this repo's hook
 #   scripts, which stop existing once ~/.claude/hooks is unlinked. The rest of
 #   the merged settings stay: what they were before the merge cannot be told
@@ -94,9 +96,15 @@ points_into_repo() {
     [[ "$target" == "$HOME/.dotfiles/"* || "$target" == "$DOTFILES_DIR/"* ]]
 }
 
-# Timestamps sort lexically, so the first is the oldest.
-oldest_backup() {
-    compgen -G "$1.backup.*" | sort | head -n 1 || true
+# What to put back at a path: its .pre-dotfiles original, or failing that the
+# newest timestamped backup (timestamps sort lexically). Other backups stay.
+backup_for() {
+    if [[ -e "$1.pre-dotfiles" || -L "$1.pre-dotfiles" ]]; then
+        printf '%s' "$1.pre-dotfiles"
+        return
+    fi
+
+    compgen -G "$1.backup.*" | sort | tail -n 1 || true
 }
 
 # Every symlink into the repo, in the places install.sh and the OS installers
@@ -152,7 +160,7 @@ while IFS= read -r link; do
 
     run "rm '$link'"
 
-    backup="$(oldest_backup "$link")"
+    backup="$(backup_for "$link")"
 
     if [[ "$DRY_RUN" == true ]]; then
         verb_restore="Would restore"; verb_remove="Would remove"

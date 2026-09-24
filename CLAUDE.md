@@ -285,9 +285,18 @@ Consequences worth knowing:
 
 `uninstall.sh` **finds** what to unlink rather than keeping a list: it scans
 `~`, `~/.config` (two deep), `~/.local/bin` and `~/.claude` for symlinks that
-resolve into the repo, removes each, and moves back the oldest
-`<name>.backup.<timestamp>` `link_config` made. A second copy of the installer's
-link list would drift. The one obligation it creates: **a new link outside
+resolve into the repo, removes each, and moves back the `<name>.pre-dotfiles`
+`link_config` made. A second copy of the installer's link list would drift.
+
+`link_config` moves aside anything at the target that is not already this
+repo's link — a real file, or someone's own symlink, which `ln -sfn` would
+otherwise replace without a trace. The first thing moved aside at a path is
+`<name>.pre-dotfiles`, and that name is never reused, so it is always the
+original. Anything replacing the link after that (an app writing a real file
+there) gets a `<name>.backup.<timestamp>` instead. Installs from before the
+`.pre-dotfiles` name have only timestamped backups; for those the uninstaller
+restores the most recent, since the oldest can be a stale leftover from an
+earlier install/uninstall cycle. The one obligation it creates: **a new link outside
 those locations must be added to `repo_links()`**, or uninstalling leaves it
 dangling.
 

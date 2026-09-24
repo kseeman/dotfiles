@@ -31,8 +31,8 @@ cd ~/dotfiles
 ./uninstall.sh
 ```
 
-It removes every symlink that points into this repo and puts back the oldest
-`.backup.<timestamp>` the installer made of what it replaced, so the files from
+It removes every symlink that points into this repo and puts back the
+`<name>.pre-dotfiles` the installer made of what it replaced, so the files from
 before the install return. It also removes this repo's hooks from
 `~/.claude/settings.json`, and on Linux the HyDE themes and wallbash template it
 installed.
@@ -76,8 +76,9 @@ outdated.
 | `~/.local/bin/tmux-sessionizer` | project/session picker |
 | `~/.claude/CLAUDE.md`, `agents/`, `skills/`, `hooks/` | Claude Code instructions and tooling |
 
-An existing file or directory at any of these paths is **moved aside** to
-`<name>.backup.<timestamp>` first, never deleted. `~/.claude/settings.json` is
+Anything already at one of these paths, including your own symlink, is **moved
+aside** to `<name>.pre-dotfiles` first, never deleted (the convention Oh My Zsh
+uses for `~/.zshrc.pre-oh-my-zsh`). `./uninstall.sh` puts it back. `~/.claude/settings.json` is
 merged rather than replaced, keeping your own settings in it.
 
 **If you use Claude Code,** note that the linked `~/.claude` files replace your
