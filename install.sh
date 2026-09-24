@@ -209,7 +209,11 @@ else
 
     source "$NVM_SH"
 
-    if ! nvm ls --lts &>/dev/null; then
+    # `nvm version` resolves against installed versions only, and fails (N/A)
+    # when none matches. `nvm ls --lts` looked equivalent but is not an option
+    # current nvm accepts, so it always failed and every run installed the
+    # newest LTS and moved the default to it.
+    if ! nvm version 'lts/*' &>/dev/null; then
         echo "Installing Node LTS..."
 
         nvm install --lts
