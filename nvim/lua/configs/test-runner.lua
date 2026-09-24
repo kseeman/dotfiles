@@ -208,6 +208,15 @@ function M.get_python()
   return 'python3'
 end
 
+-- Run a command in a terminal split. Not `:terminal {cmd}`: that is an Ex
+-- command, so `%` and `#` get filename expansion, and Maven's
+-- `-Dtest=Class#method` became `-Dtest=Class<alternate file>method`.
+function M.open_terminal(cmd)
+  vim.cmd('new')
+  vim.fn.jobstart(cmd, { term = true })
+  vim.cmd('startinsert')
+end
+
 -- Detect test type based on current file
 function M.detect_test_type(filepath)
   filepath = filepath or vim.fn.expand('%:p')
@@ -299,9 +308,7 @@ function M.run_current_test()
   end
   
   local cmd = config.run_file(filepath)
-  vim.cmd('split')
-  vim.cmd('terminal ' .. cmd)
-  vim.cmd('startinsert')
+  M.open_terminal(cmd)
 end
 
 function M.run_all_tests()
@@ -314,9 +321,7 @@ function M.run_all_tests()
   end
   
   local cmd = config.run_all()
-  vim.cmd('split')
-  vim.cmd('terminal ' .. cmd)
-  vim.cmd('startinsert')
+  M.open_terminal(cmd)
 end
 
 function M.debug_current_test()
@@ -329,9 +334,7 @@ function M.debug_current_test()
   end
   
   local cmd = config.debug_file(filepath)
-  vim.cmd('split')
-  vim.cmd('terminal ' .. cmd)
-  vim.cmd('startinsert')
+  M.open_terminal(cmd)
 end
 
 function M.debug_all_tests()
@@ -344,9 +347,7 @@ function M.debug_all_tests()
   end
   
   local cmd = config.debug_all()
-  vim.cmd('split')
-  vim.cmd('terminal ' .. cmd)
-  vim.cmd('startinsert')
+  M.open_terminal(cmd)
 end
 
 -- Run single test under cursor
@@ -372,9 +373,7 @@ function M.run_single_test()
   
   local cmd = config.run_single(filepath, test_name)
   vim.notify("Running test: " .. test_name)
-  vim.cmd('split')
-  vim.cmd('terminal ' .. cmd)
-  vim.cmd('startinsert')
+  M.open_terminal(cmd)
 end
 
 -- Debug single test under cursor
@@ -400,9 +399,7 @@ function M.debug_single_test()
   
   local cmd = config.debug_single(filepath, test_name)
   vim.notify("Debugging test: " .. test_name)
-  vim.cmd('split')
-  vim.cmd('terminal ' .. cmd)
-  vim.cmd('startinsert')
+  M.open_terminal(cmd)
 end
 
 -- Setup keymaps
