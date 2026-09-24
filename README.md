@@ -23,6 +23,28 @@ The installer detects the platform and runs the matching setup from `os/`. Run
 the dry run first. It is an opinionated personal setup, and it replaces some
 existing configuration (see below).
 
+## Uninstall
+
+```sh
+cd ~/dotfiles
+./uninstall.sh --dry-run   # prints every step; changes nothing
+./uninstall.sh
+```
+
+It removes every symlink that points into this repo and puts back the oldest
+`.backup.<timestamp>` the installer made of what it replaced, so the files from
+before the install return. It also removes this repo's hooks from
+`~/.claude/settings.json`, and on Linux the HyDE themes and wallbash template it
+installed.
+
+Left in place, and listed at the end: Homebrew or pacman packages, Oh My Zsh
+(`uninstall_oh_my_zsh` removes it), Node versions, `~/.userconfig`, and the
+checkout itself. `--remove-tools` also deletes the Neovim Python environment,
+netcoredbg, and tmux plugins the installer downloaded.
+
+Edits made to a linked file since installing were made to the repo's copy, so
+copy out anything you want to keep before uninstalling.
+
 ## What the installer does on macOS
 
 **Packages**, via Homebrew (installed first if missing), from

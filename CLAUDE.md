@@ -281,6 +281,26 @@ Consequences worth knowing:
 - HyDE writes `wall.set` and `wall.{swww,hyprlock,awww}.png` into the installed directory as wallpapers change. Because that directory is real rather than a symlink to the repo, this state never reaches the repo and **no `.gitignore` entries are needed**.
 - `get_themes()` self-heals a missing or dangling `wall.set` by relinking it to the first wallpaper it finds.
 
+### Uninstalling
+
+`uninstall.sh` **finds** what to unlink rather than keeping a list: it scans
+`~`, `~/.config` (two deep), `~/.local/bin` and `~/.claude` for symlinks that
+resolve into the repo, removes each, and moves back the oldest
+`<name>.backup.<timestamp>` `link_config` made. A second copy of the installer's
+link list would drift. The one obligation it creates: **a new link outside
+those locations must be added to `repo_links()`**, or uninstalling leaves it
+dangling.
+
+Copied files are not links and are handled by name: HyDE theme directories are
+removed, and a wallbash template only when it still matches the repo's copy.
+`~/.claude/settings.json` is not restored from a backup, since what it held
+before the merge cannot be told from the backups, which the merge also writes.
+Only the registrations for this repo's hook scripts are removed, because they
+name scripts that stop existing once `~/.claude/hooks` is unlinked.
+
+Test it only against a scratch `HOME` (`env HOME=/tmp/fake ./uninstall.sh`);
+run for real, it unlinks the machine it runs on.
+
 ### Adding a new OS or distro
 
 1. Create `os/<name>/` with `install.sh` and `zsh/`
