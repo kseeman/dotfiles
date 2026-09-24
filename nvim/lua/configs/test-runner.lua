@@ -81,8 +81,9 @@ local test_configs = {
       local class_name = filepath:match("([^/]+)%.java$"):gsub("%.java$", "")
       
       -- Check if it's Maven or Gradle project
-      if vim.fn.filereadable(vim.fn.getcwd() .. '/pom.xml') == 1 then
-        return 'mvn test -Dtest=' .. class_name
+      local maven = M.get_maven_project(filepath)
+      if maven then
+        return M.maven_cmd(maven, 'test -Dtest=' .. class_name)
       elseif vim.fn.filereadable(vim.fn.getcwd() .. '/build.gradle') == 1 or vim.fn.filereadable(vim.fn.getcwd() .. '/build.gradle.kts') == 1 then
         return './gradlew test --tests ' .. class_name
       else
@@ -101,8 +102,9 @@ local test_configs = {
     debug_file = function(filepath)
       -- For Java debugging, we'll need to set up remote debugging
       local class_name = filepath:match("([^/]+)%.java$"):gsub("%.java$", "")
-      if vim.fn.filereadable(vim.fn.getcwd() .. '/pom.xml') == 1 then
-        return 'mvn test -Dtest=' .. class_name .. ' -Dmaven.surefire.debug'
+      local maven = M.get_maven_project(filepath)
+      if maven then
+        return M.maven_cmd(maven, 'test -Dtest=' .. class_name .. ' -Dmaven.surefire.debug')
       else
         return './gradlew test --tests ' .. class_name .. ' --debug-jvm'
       end
@@ -116,16 +118,18 @@ local test_configs = {
     end,
     run_single = function(filepath, test_name)
       local class_name = filepath:match("([^/]+)%.java$"):gsub("%.java$", "")
-      if vim.fn.filereadable(vim.fn.getcwd() .. '/pom.xml') == 1 then
-        return 'mvn test -Dtest=' .. class_name .. '#' .. test_name
+      local maven = M.get_maven_project(filepath)
+      if maven then
+        return M.maven_cmd(maven, 'test -Dtest=' .. class_name .. '#' .. test_name)
       else
         return './gradlew test --tests ' .. class_name .. '.' .. test_name
       end
     end,
     debug_single = function(filepath, test_name)
       local class_name = filepath:match("([^/]+)%.java$"):gsub("%.java$", "")
-      if vim.fn.filereadable(vim.fn.getcwd() .. '/pom.xml') == 1 then
-        return 'mvn test -Dtest=' .. class_name .. '#' .. test_name .. ' -Dmaven.surefire.debug'
+      local maven = M.get_maven_project(filepath)
+      if maven then
+        return M.maven_cmd(maven, 'test -Dtest=' .. class_name .. '#' .. test_name .. ' -Dmaven.surefire.debug')
       else
         return './gradlew test --tests ' .. class_name .. '.' .. test_name .. ' --debug-jvm'
       end
@@ -192,6 +196,39 @@ function M.get_playwright_config()
     return playwright_config
   end
   return nil
+end
+
+-- Helper for Maven multi-module builds. The nearest pom.xml above the test
+-- file is its module; the topmost one inside the repo is the reactor root.
+-- Running from the module itself resolves sibling modules from stale jars in
+-- ~/.m2, so a method added to one fails to compile against it.
+function M.get_maven_project(filepath)
+  local stop = vim.fs.root(filepath, '.git')
+  local module, root
+  for dir in vim.fs.parents(filepath) do
+    if vim.fn.filereadable(dir .. '/pom.xml') == 1 then
+      module = module or dir
+      root = dir
+    end
+    if dir == stop then
+      break
+    end
+  end
+  if module then
+    return { module = module, root = root }
+  end
+end
+
+-- Build from the reactor root. `-am` also builds the module's dependencies
+-- from source, and those have no test matching -Dtest, which Surefire treats
+-- as a failure unless told otherwise.
+function M.maven_cmd(maven, args)
+  local cmd = 'cd ' .. vim.fn.shellescape(maven.root) .. ' && mvn'
+  if maven.module ~= maven.root then
+    cmd = cmd .. ' -pl ' .. vim.fn.shellescape(vim.fs.relpath(maven.root, maven.module))
+      .. ' -am -Dsurefire.failIfNoSpecifiedTests=false'
+  end
+  return cmd .. ' ' .. args
 end
 
 -- Helper for the Python interpreter: the project's venv when there is one, so
