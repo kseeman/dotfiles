@@ -184,6 +184,11 @@ return {
             enabled = true,
           },
           signatureHelp = { enabled = true },
+          -- Parameter names beside every argument, not only literals (the
+          -- default). Displayed by the global inlay-hint switch in mappings.lua.
+          inlayHints = {
+            parameterNames = { enabled = "all" },
+          },
           completion = {
             favoriteStaticMembers = {
               "org.hamcrest.MatcherAssert.assertThat",

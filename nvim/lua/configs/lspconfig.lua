@@ -109,6 +109,33 @@ vim.lsp.config("pyright", {
   end,
 })
 
+-- Parameter-name inlay hints (enabled client-side in mappings.lua). Both
+-- servers send none unless asked. Hints are skipped where the argument
+-- already says the same thing as the parameter name.
+local ts_inlay_hints = {
+  inlayHints = {
+    includeInlayParameterNameHints = "all",
+    includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+  },
+}
+vim.lsp.config("ts_ls", {
+  settings = { typescript = ts_inlay_hints, javascript = ts_inlay_hints },
+})
+
+vim.lsp.config("omnisharp", {
+  settings = {
+    RoslynExtensionsOptions = {
+      InlayHintsOptions = {
+        EnableForParameters = true,
+        ForLiteralParameters = true,
+        ForObjectCreationParameters = true,
+        ForOtherParameters = true,
+        SuppressForParametersThatMatchArgumentName = true,
+      },
+    },
+  },
+})
+
 vim.lsp.enable(servers)
 
 -- Style the highlight groups

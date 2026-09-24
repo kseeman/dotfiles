@@ -36,6 +36,16 @@ end, { desc = "terminal toggle floating term" })
 --   require("nvchad.term").toggle { pos = "float", id = "floatTerm" }
 -- end, { desc = "terminal toggle floating term" })
 
+-- Inlay hints: parameter names beside arguments, as IntelliJ shows them. On
+-- globally, so every client that sends them (jdtls included) is covered.
+-- Servers still have to be asked for parameter-name hints in their settings;
+-- see configs/lspconfig.lua and the java profile. <leader>th is NvChad's theme
+-- picker, hence <leader>ih.
+vim.lsp.inlay_hint.enable(true)
+map("n", "<leader>ih", function()
+  vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
+end, { desc = "Toggle inlay hints" })
+
 -- Setup test runner
 local test_runner = require("configs.test-runner")
 test_runner.setup()
