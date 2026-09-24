@@ -228,6 +228,16 @@ map("n", "<leader>fd", function()
   require("configs.folders").pick()
 end, { desc = "Find folder and reveal in tree" })
 
+-- Back to earlier searches, with their results as they were. How many are
+-- kept is `cache_picker` in the telescope spec (plugins/shared.lua).
+map("n", "<leader>fr", function()
+  require("telescope.builtin").resume()
+end, { desc = "Resume last search" })
+
+map("n", "<leader>fR", function()
+  require("telescope.builtin").pickers()
+end, { desc = "Recent searches" })
+
 -- Profile switching keymaps
 map("n", "<leader>ps", ":ProfileSwitch<CR>", { desc = "Switch profile" })
 map("n", "<leader>pr", ":ProfileRestart<CR>", { desc = "Restart with profile" })

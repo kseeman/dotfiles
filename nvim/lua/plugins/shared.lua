@@ -168,18 +168,34 @@ return {
 
   -- Telescope: file name first so it stays readable in deep trees, and a
   -- narrower preview (NvChad's is 0.55) to leave room for the results.
+  --
+  -- Getting back to earlier searches: the last 10 pickers are kept with their
+  -- results (<leader>fR lists them, <leader>fr resumes the last), and C-k/C-j
+  -- in the prompt step through past queries. Telescope records that history
+  -- but binds no keys to it. Its docs suggest C-Up/C-Down, which macOS takes
+  -- for Mission Control. C-j was unbound; C-k was sideways preview scrolling.
   {
     "nvim-telescope/telescope.nvim",
-    opts = {
-      defaults = {
-        path_display = { "filename_first" },
-        layout_config = {
-          horizontal = {
-            preview_width = 0.4,
+    opts = function(_, opts)
+      local actions = require("telescope.actions")
+      return vim.tbl_deep_extend("force", opts, {
+        defaults = {
+          path_display = { "filename_first" },
+          layout_config = {
+            horizontal = {
+              preview_width = 0.4,
+            },
+          },
+          cache_picker = { num_pickers = 10 },
+          mappings = {
+            i = {
+              ["<C-k>"] = actions.cycle_history_prev,
+              ["<C-j>"] = actions.cycle_history_next,
+            },
           },
         },
-      },
-    },
+      })
+    end,
   },
 
   -- NvimTree: common view/git settings. Profiles may add
