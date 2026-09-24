@@ -125,6 +125,33 @@ t 'git push -f origin feature/x' deny
 t 'git push origin :feature/x' deny
 t 'git push origin --delete feature/x' deny
 
+echo "--- pull request merges ---"
+
+# Merging is denied outright, however it is reached.
+t 'gh pr merge' deny
+t 'gh pr merge 12 --squash' deny
+t 'gh pr merge --auto --merge' deny
+t 'cd /tmp/repo && gh pr merge 12' deny
+t 'sudo gh pr merge 12' deny
+t 'gh pr create --fill && gh pr merge --auto' deny
+t 'gh api -X PUT repos/o/r/pulls/12/merge' deny
+t 'gh api -X PUT "repos/o/r/pulls/12/merge"' deny
+t 'gh api repos/o/r/merges -f base=main -f head=x' deny
+t "gh api graphql -f query='mutation { mergePullRequest(input: {}) { clientMutationId } }'" deny
+t "gh api graphql -f query='mutation { enablePullRequestAutoMerge(input: {}) { clientMutationId } }'" deny
+
+# Everything else gh does is left to settings.json.
+t 'gh pr create --fill' none
+t 'gh pr list' none
+t 'gh pr view 12' none
+t 'gh pr checks 12' none
+t 'gh api repos/o/r/pulls/12' none
+t 'gh api repos/o/r/pulls/12/merged' none
+
+# Mentioning a merge is not doing one.
+t 'rg "gh pr merge" docs/' none
+t "git commit -m 'never run gh pr merge'" none
+
 echo
 echo "pass=$pass fail=$fail"
 

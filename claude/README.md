@@ -149,10 +149,11 @@ Two things do not relax, and they are what make delegating commits safe:
   began stays out of every commit. No `git add -A` on a tree that started dirty.
 - **Never merge, and never push the default branch.** Pushing a working branch
   and opening or listing PRs are allowed without a prompt (`git push`,
-  `gh pr create`, `gh pr list` in `allow`). `gh pr merge` stays in `ask`, and
-  `protect-git.sh` asks before any push naming `main`, `master` or another
-  protected branch, or naming no branch at all. Force and delete pushes are
-  denied outright.
+  `gh pr create`, `gh pr list` in `allow`). Merging a PR is **denied** — in
+  `settings.json` and again in `protect-git.sh`, which also catches it chained
+  or through `gh api` — so it is always done by hand. `protect-git.sh` asks
+  before any push naming `main`, `master` or another protected branch, or naming
+  no branch at all. Force and delete pushes are denied outright.
 
 `git commit` is in `allow` so increments do not each raise a prompt.
 `git commit --amend` stays in `ask`, and the hook independently returns `ask`
@@ -188,6 +189,7 @@ immediately in practice.
 | `stash drop`, `stash clear` | discards stashed work |
 | `branch -D` | discards unmerged commits |
 | `reflog expire/delete`, `update-ref -d`, `filter-branch` | destroys the recovery path |
+| `gh pr merge` (incl. `--auto`), and `gh api` merge routes | merging is mine; `ask` would not do, since auto mode can resolve it without a prompt |
 
 **Asked** — I get a prompt, and approving it *is* the explicit permission
 `CLAUDE.md` requires:
@@ -240,9 +242,9 @@ Three lists in `settings.json`:
   (`git push`, with `protect-git.sh` asking for protected branches),
   `gh pr create/list`, search tools, and the usual build/test/lint/type-check
   commands for Node, .NET, Java, Python, Go, and Rust.
-- **`ask`** — merging, rewriting history, and publishing: `gh pr merge`,
-  `git commit --amend`, `gh release`, `npm publish`, `docker push`.
-- **`deny`** — secrets. `.env` files, key material, cloud and cluster
+- **`ask`** — rewriting history and publishing: `git commit --amend`,
+  `gh release`, `npm publish`, `docker push`.
+- **`deny`** — merging a pull request (`gh pr merge`), and secrets. `.env` files, key material, cloud and cluster
   credentials, Terraform state, service-account JSON, `~/.ssh`, `~/.aws`,
   `~/.claude.json`. Denied paths are excluded from search as well as from
   reading, so they do not leak into context during exploration.

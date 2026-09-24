@@ -60,12 +60,12 @@
     ],
     "ask": [
       "Bash(git commit --amend:*)",
-      "Bash(gh pr merge:*)",
       "Bash(gh release:*)",
       "Bash(npm publish:*)",
       "Bash(docker push:*)"
     ],
     "deny": [
+      "Bash(gh pr merge:*)",
       "Read(**/.env)",
       "Read(**/.env.*)",
       "Read(**/secrets/**)",

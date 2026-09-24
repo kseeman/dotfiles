@@ -3,7 +3,8 @@
 # PreToolUse hook (matcher: Bash).
 #
 # Blocks git operations that can destroy local work or reach a remote, and asks
-# before the ones that need my explicit say-so. Permission rules in
+# before the ones that need my explicit say-so. Also denies merging a pull
+# request through gh, which is mine to do and never Claude's. Permission rules in
 # settings.json cover the same ground ergonomically, but they match on a command
 # prefix — `cd foo && git push` slips past them. This hook sees the whole
 # command string, so it doesn't.
@@ -126,6 +127,30 @@ git_args() {
 
 has() { printf '%s' "$1" | grep -qE "$2"; }
 
+# The gh counterpart of git_args: the arguments after `gh`, or nothing if the
+# segment does not invoke gh.
+#
+#   sudo gh pr merge 12 --squash   ->   pr merge 12 --squash
+gh_args() {
+    local -a words
+    local i=0 n
+
+    read -r -a words <<< "$1"
+    n=${#words[@]}
+
+    while ((i < n)); do
+        case "${words[i]}" in
+            sudo|env|*=*) ((i++)) ;;
+            *) break ;;
+        esac
+    done
+
+    [[ "${words[i]:-}" == "gh" ]] || return 0
+    ((i++))
+
+    printf '%s' "${words[*]:i}"
+}
+
 # Every branch a push would write to, one per line, or nothing when the command
 # does not name any explicitly.
 #
@@ -196,6 +221,22 @@ is_protected_branch() {
 }
 
 while IFS= read -r segment; do
+    # Merging a pull request is never Claude's call: opening the PR is where its
+    # authority ends. Denied, not asked, because auto mode can resolve an `ask`
+    # without a prompt ever reaching me. Covers `gh pr merge` (including
+    # --auto) and the API routes that do the same thing.
+    gh="$(gh_args "$segment")"
+    if [[ -n "$gh" ]]; then
+        if has "$gh" '^pr[[:space:]]+merge([[:space:]]|$)'; then
+            decide deny "Merging a pull request is blocked. Opening the PR is where Claude's authority ends; ask the user to merge it themselves."
+        fi
+        if has "$gh" '^api([[:space:]]|$)' \
+            && has "$gh" '(pulls/[^[:space:]/]+/merge([^[:alnum:]_]|$)|/merges([^[:alnum:]_]|$)|mergePullRequest|enablePullRequestAutoMerge)'; then
+            decide deny "Merging through the GitHub API is blocked. Ask the user to merge it themselves."
+        fi
+        continue
+    fi
+
     args="$(git_args "$segment")"
     [[ -n "$args" ]] || continue
 
