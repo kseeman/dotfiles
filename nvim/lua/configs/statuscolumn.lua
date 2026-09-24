@@ -11,21 +11,26 @@ local M = {}
 -- Evaluated once per drawn line, with v:lnum/v:relnum/v:virtnum set for it
 -- and the window being drawn temporarily current.
 function M.numbers()
-  -- The option is global, so windows that turn numbers off (nvim-tree,
-  -- terminals, pickers) inherit it; they get their folds and signs only.
-  if not (vim.wo.number or vim.wo.relativenumber) then
+  -- Each half follows its own option, so NvChad's <leader>n / <leader>rn
+  -- toggles still work. Without 'relativenumber' Neovim stops redrawing the
+  -- gutter on cursor movement, so a relative column left up would go stale.
+  -- Windows that turn both off (nvim-tree, terminals, pickers) inherit this
+  -- global option and get their folds and signs only.
+  local abs, rel = vim.wo.number, vim.wo.relativenumber
+  if not (abs or rel) then
     return ""
   end
 
   local width = math.max(#tostring(vim.api.nvim_buf_line_count(0)), 2)
+  local abs_text = abs and string.format("%" .. width .. "d ", vim.v.lnum) or ""
+  -- The cursor line has no offset to show, so its relative slot stays empty.
+  local rel_text = rel and string.format("%3s ", vim.v.relnum == 0 and "" or vim.v.relnum) or ""
+
   -- Wrapped continuation and virtual lines get a blank gutter, like the default.
   if vim.v.virtnum ~= 0 then
-    return string.rep(" ", width + 5)
+    return string.rep(" ", #abs_text + #rel_text)
   end
-
-  -- The cursor line has no offset to show, so its relative slot stays empty.
-  local rel = vim.v.relnum == 0 and "" or tostring(vim.v.relnum)
-  return string.format("%" .. width .. "d %3s ", vim.v.lnum, rel)
+  return abs_text .. rel_text
 end
 
 function M.setup()
