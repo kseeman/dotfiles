@@ -166,6 +166,22 @@ return {
     end,
   },
 
+  -- Telescope: file name first so it stays readable in deep trees, and a
+  -- narrower preview (NvChad's is 0.55) to leave room for the results.
+  {
+    "nvim-telescope/telescope.nvim",
+    opts = {
+      defaults = {
+        path_display = { "filename_first" },
+        layout_config = {
+          horizontal = {
+            preview_width = 0.4,
+          },
+        },
+      },
+    },
+  },
+
   -- NvimTree: common view/git settings. Profiles may add
   -- `opts.filters.custom` (disjoint from these keys).
   {
