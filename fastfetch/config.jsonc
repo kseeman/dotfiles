@@ -22,6 +22,10 @@
     }
   },
 
+  // Every key starts with a Nerd Font Material Design icon (the U+F0000+ range)
+  // and a space. Eight of them were once blank: their icons had come from the
+  // U+E000-F8FF range and were lost when the file was written, leaving a bare
+  // leading space that indented those lines by one column.
   "modules": [
     // ---------------------------------------------------------------------
     // Title
@@ -55,14 +59,14 @@
     },
     {
       "type": "kernel",
-      "key": " Kernel",
+      "key": "󰒓 Kernel",
       "keyColor": "yellow",
       // {release} alone, since {sysname} would prefix a redundant "Darwin".
       "format": "{release}"
     },
     {
       "type": "packages",
-      "key": " Packages",
+      "key": "󰏖 Packages",
       "keyColor": "yellow"
     },
     {
@@ -74,12 +78,12 @@
     },
     {
       "type": "terminal",
-      "key": " Terminal",
+      "key": "󰆍 Terminal",
       "keyColor": "yellow"
     },
     {
       "type": "shell",
-      "key": " Shell",
+      "key": "󱆃 Shell",
       "keyColor": "yellow"
     },
     {
@@ -107,7 +111,7 @@
     },
     {
       "type": "cpu",
-      "key": " CPU",
+      "key": "󰻠 CPU",
       "keyColor": "cyan",
       // Drop the core count and clock speed to match the target.
       "format": "{name}"
@@ -120,12 +124,12 @@
     },
     {
       "type": "memory",
-      "key": " Memory",
+      "key": "󰍛 Memory",
       "keyColor": "cyan"
     },
     {
       "type": "disk",
-      "key": " Storage",
+      "key": "󰋊 Storage",
       "keyColor": "cyan",
       // Only the boot volume. Without this, every mounted DMG and external
       // volume gets its own line.
@@ -136,7 +140,7 @@
     },
     {
       "type": "uptime",
-      "key": " Uptime",
+      "key": "󰅐 Uptime",
       "keyColor": "cyan"
     },
     {
