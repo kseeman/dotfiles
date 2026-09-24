@@ -210,6 +210,10 @@ map("n", "<leader>fP", function()
   require("configs.projects").pick()
 end, { desc = "Find project" })
 
+map("n", "<leader>fd", function()
+  require("configs.folders").pick()
+end, { desc = "Find folder and reveal in tree" })
+
 -- Profile switching keymaps
 map("n", "<leader>ps", ":ProfileSwitch<CR>", { desc = "Switch profile" })
 map("n", "<leader>pr", ":ProfileRestart<CR>", { desc = "Restart with profile" })
