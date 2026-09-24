@@ -13,18 +13,20 @@
 # permission handling continues.
 #
 #   deny   Claude cannot run it at all, and is told to ask me to run it myself.
-#   ask    I get a prompt, which is where I confirm a push CLAUDE.md has not
-#          already authorised — including one to the default branch, which
-#          CLAUDE.md rules out and only I can decide to make anyway.
-#   allow  Only for a push whose branches *all* match
-#          CLAUDE_GIT_PUSH_ALLOW_PREFIX, which is how an unattended loop pushes
-#          its own feature branches.
+#   ask    I get a prompt: a push to a protected branch (main, master, …),
+#          which CLAUDE.md rules out and only I can decide to make anyway, or a
+#          push that names no branch at all.
+#
+# A push naming only ordinary branches gets no opinion, and settings.json's
+# `allow` rule lets it through. This hook never returns `allow` -- that would
+# approve the entire command line, not just the push.
 
 set -uo pipefail
 
 # Fail open. This hook is defence in depth, not the only layer: settings.json
-# also carries `ask` rules for push and amend, so a machine without jq is
-# degraded rather than unprotected.
+# carries an `ask` rule for amend and the merge rules, so a machine without jq is
+# degraded rather than unprotected. What it loses is the protected-branch check
+# on pushes, which settings.json's prefix rules cannot express.
 command -v jq >/dev/null 2>&1 || exit 0
 
 input="$(cat)"
@@ -176,14 +178,14 @@ push_targets() {
     done
 }
 
-# Branches never eligible for the unattended allowlist, whatever prefix is set.
-# Matched exactly, against the name push_targets has already normalised, so
-# `refs/heads/main` is caught but a feature branch called `main-fix` is not.
+# Branches a push always asks about. Matched exactly, against the name
+# push_targets has already normalised, so `refs/heads/main` is caught but a
+# feature branch called `main-fix` is not.
 #
-# This is a backstop for a carelessly broad prefix, not the primary defence --
-# it cannot know a given repository's actual default branch, so it covers the
-# names that are conventionally protected and relies on the prefix being
-# specific for anything else.
+# It cannot know a given repository's actual default branch, so it covers the
+# names that are conventionally protected. A repo whose default is named
+# something else relies on the CLAUDE.md rule alone. HEAD is here because it is
+# whatever is checked out, which may well be the default branch.
 is_protected_branch() {
     case "$1" in
         main|master|trunk|default|develop|development|release|stable|production|HEAD)
@@ -261,43 +263,38 @@ while IFS= read -r segment; do
     if has "$args" '^push([[:space:]]|$)' \
         && ! has "$args" '(^|[[:space:]])(--dry-run|-[a-zA-Z]*n([[:space:]]|$))'; then
 
-        # Unattended opt-in. When CLAUDE_GIT_PUSH_ALLOW_PREFIX names a branch
-        # prefix, pushing a matching branch skips the prompt -- which is what
-        # lets an agent loop run without someone at the keyboard.
+        # Pushing a working branch is pre-authorised by CLAUDE.md, so a push
+        # naming only ordinary branches gets no opinion here and the `allow`
+        # rule in settings.json lets it through. Deliberately not `allow`: a
+        # hook's allow approves the whole command line, so
+        # `git push origin feat && <anything>` would skip the prompt for
+        # <anything> too. Staying silent keeps Claude Code judging every other
+        # command in the line on its own.
         #
-        # An environment variable rather than a config file, deliberately: the
-        # relaxation lives exactly as long as the session that exports it, and
-        # cannot be committed somewhere and quietly outlive its reason. Force
-        # and delete pushes never reach here -- they are denied above.
-        allow_prefix="${CLAUDE_GIT_PUSH_ALLOW_PREFIX:-}"
-        if [[ -n "$allow_prefix" && "$allow_prefix" != "*" && "$allow_prefix" != "/" ]]; then
-            targets="$(push_targets "$args")"
+        # Ask when any named branch is a conventionally protected one --
+        # CLAUDE.md never pushes the default branch on its own say-so -- and
+        # when none is named, since a bare push's target depends on upstream
+        # config the hook cannot see. Force and delete pushes never reach here:
+        # they are denied above.
+        targets="$(push_targets "$args")"
+        protected=""
 
-            # Every named branch must clear the bar, not just one of them, and
-            # naming none at all is "cannot tell" rather than consent.
-            if [[ -n "$targets" ]]; then
-                allowed=1
-                names=""
-
-                while IFS= read -r target; do
-                    if is_protected_branch "$target"; then
-                        allowed=0
-                        break
-                    fi
-
-                    case "$target" in
-                        "$allow_prefix"*) names="${names:+$names, }$target" ;;
-                        *) allowed=0; break ;;
-                    esac
-                done <<< "$targets"
-
-                if ((allowed)); then
-                    decide allow "Pushing $names, which matches CLAUDE_GIT_PUSH_ALLOW_PREFIX ('$allow_prefix')."
+        if [[ -n "$targets" ]]; then
+            while IFS= read -r target; do
+                if is_protected_branch "$target"; then
+                    protected="$target"
+                    break
                 fi
+            done <<< "$targets"
+
+            if [[ -z "$protected" ]]; then
+                continue
             fi
+
+            decide ask "This pushes to '$protected', a protected branch. CLAUDE.md never pushes the default branch without explicit permission — approving this prompt is that permission."
         fi
 
-        decide ask "This pushes to a remote. CLAUDE.md allows pushing a working branch but never the default branch, and never merging — approving this prompt confirms this push."
+        decide ask "This push names no branch, so its target depends on upstream config the hook cannot see. Name the branch explicitly, or approve this prompt to confirm it."
     fi
 
     if has "$args" '^commit([[:space:]]|$)' && has "$args" '(^|[[:space:]])--amend([[:space:]]|$)'; then

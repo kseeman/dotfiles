@@ -85,64 +85,45 @@ for c in \
 do t "$c" deny; done
 
 echo
-echo "--- unattended push allowlist (CLAUDE_GIT_PUSH_ALLOW_PREFIX) ---"
+echo "--- push policy ---"
 
-# Same harness, with the opt-in set. The variable is exported only around these
-# cases so every test above keeps exercising the unset path.
-tp() {
-    local prefix="$1" cmd="$2" expect="$3"
+# A working branch pushes without a prompt: the hook stays silent and
+# settings.json's allow rule applies. Never `allow` -- that would approve the
+# rest of the command line too.
+t 'git push origin feature/x' none
+t 'git push -u origin feature/x' none
+t 'git push origin HEAD:feature/x' none
+t 'git push origin refs/heads/feature/x' none
+t 'git push origin a b' none
+t 'cd /tmp/repo && git push -u origin feature/x' none
+t 'git push -o ci.skip origin feature/x' none
+t 'git push origin main-fix' none
+t 'git push origin feature/x && rm -rf build' none
 
-    CLAUDE_GIT_PUSH_ALLOW_PREFIX="$prefix" t "$cmd" "$expect"
-}
+# A protected branch asks, wherever it appears in the refspecs.
+t 'git push origin main' ask
+t 'git push origin master' ask
+t 'git push origin HEAD:refs/heads/main' ask
+t 'git push origin trunk' ask
+t 'git push origin production' ask
+t 'git push origin develop' ask
+t 'git push origin HEAD' ask
+t 'git push origin main feature/x' ask
+t 'git push origin feature/x main' ask
+t 'git push -u origin master feature/x' ask
+t 'git push origin feature/x && git push origin main' ask
 
-# The prefix does what it says.
-tp 'kseeman123/' 'git push origin kseeman123/x' allow
-tp 'kseeman123/' 'git push -u origin kseeman123/x' allow
-tp 'kseeman123/' 'git push origin HEAD:kseeman123/x' allow
-tp 'kseeman123/' 'git push origin refs/heads/kseeman123/x' allow
-tp 'kseeman123/' 'git push origin kseeman123/a kseeman123/b' allow
+# No branch named: the target depends on config the hook cannot see.
+t 'git push' ask
+t 'git push origin' ask
+t 'git push --all origin' ask
+t 'git push --mirror origin' ask
 
-# Anything it does not cover still prompts.
-tp 'kseeman123/' 'git push origin other/x' ask
-tp 'kseeman123/' 'git push origin main' ask
-tp '' 'git push origin kseeman123/x' ask
-
-# A bare push names no branch, so the hook cannot tell and must not guess.
-tp 'kseeman123/' 'git push' ask
-tp 'kseeman123/' 'git push origin' ask
-tp 'kseeman123/' 'git push --all origin' ask
-tp 'kseeman123/' 'git push --mirror origin' ask
-
-# Every refspec is judged, not just the last. Allowing this pair on the
-# strength of its second half would push main unattended.
-tp 'kseeman123/' 'git push origin main kseeman123/x' ask
-tp 'kseeman123/' 'git push origin kseeman123/x main' ask
-tp 'kseeman123/' 'git push -u origin master kseeman123/x' ask
-tp 'kseeman123/' 'git push origin kseeman123/x other/y' ask
-
-# Protected names are matched after normalisation, so a qualified ref cannot
-# smuggle one past a careless prefix.
-tp 'refs/' 'git push origin HEAD:refs/heads/main' ask
-tp 'ma' 'git push origin main' ask
-tp 'tr' 'git push origin trunk' ask
-tp 'pro' 'git push origin production' ask
-
-# ...but a feature branch that merely starts with a protected name is fine.
-tp 'main-' 'git push origin main-fix' allow
-
-# The prefix is a literal string, not a glob.
-tp '*' 'git push origin anything' ask
-tp '/' 'git push origin anything' ask
-tp 'k*' 'git push origin kaboom' ask
-
-# Force and delete are denied before the allowlist is ever consulted.
-tp 'kseeman123/' 'git push --force origin kseeman123/x' deny
-tp 'kseeman123/' 'git push -f origin kseeman123/x' deny
-tp 'kseeman123/' 'git push origin :kseeman123/x' deny
-tp 'kseeman123/' 'git push origin --delete kseeman123/x' deny
-
-# An option's value is not a branch.
-tp 'kseeman123/' 'git push -o ci.skip origin kseeman123/x' allow
+# Force and delete stay denied on any branch.
+t 'git push --force origin feature/x' deny
+t 'git push -f origin feature/x' deny
+t 'git push origin :feature/x' deny
+t 'git push origin --delete feature/x' deny
 
 echo
 echo "pass=$pass fail=$fail"

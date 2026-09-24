@@ -147,10 +147,12 @@ Two things do not relax, and they are what make delegating commits safe:
 
 - **Staging is explicit, by path.** Anything already modified when the work
   began stays out of every commit. No `git add -A` on a tree that started dirty.
-- **Never push.** An approved plan authorises commits and nothing else. This is
-  enforced three ways: the rule in `CLAUDE.md`, an `ask` rule in
-  `settings.json`, and `protect-git.sh` — which returns `ask` for any push and
-  `deny` for a force push, regardless of what any plan said.
+- **Never merge, and never push the default branch.** Pushing a working branch
+  and opening or listing PRs are allowed without a prompt (`git push`,
+  `gh pr create`, `gh pr list` in `allow`). `gh pr merge` stays in `ask`, and
+  `protect-git.sh` asks before any push naming `main`, `master` or another
+  protected branch, or naming no branch at all. Force and delete pushes are
+  denied outright.
 
 `git commit` is in `allow` so increments do not each raise a prompt.
 `git commit --amend` stays in `ask`, and the hook independently returns `ask`
@@ -190,8 +192,17 @@ immediately in practice.
 **Asked** — I get a prompt, and approving it *is* the explicit permission
 `CLAUDE.md` requires:
 
-- `git push` (plain — `--dry-run` passes through untouched)
+- `git push` naming a protected branch — `main`, `master`, `trunk`, `develop`,
+  `release`, `production`, `HEAD` and similar — anywhere in its refspecs
+- `git push` naming no branch (`git push`, `git push origin`, `--all`,
+  `--mirror`), since its target depends on upstream config the hook cannot see
 - `git commit --amend`
+
+A push naming only ordinary branches gets **no opinion** from the hook, and the
+`allow` rule in `settings.json` lets it through. The hook never returns `allow`:
+that approves the entire command line, so `git push origin x && <anything>`
+would skip the prompt for `<anything>` too. `--dry-run` passes through
+untouched.
 
 **Untouched**: `status`, `diff`, `log`, `show`, `blame`, `add`, `commit`,
 `branch -d`, `stash push/list`, `fetch`, `pull`, `rebase`, `merge`,
