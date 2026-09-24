@@ -366,7 +366,7 @@ Sessions are keyed by cwd **and git branch**, so the same checkout on two branch
 
 `<leader>q` was chosen because NvChad binds nothing under it; `<leader>p` is already profile switching plus NvChad's terminal picker.
 
-**kulala.nvim declares `event = { "SessionLoadPost", "VimLeavePre" }` in its own upstream spec**, so every session restore loads it and runs its one-time tree-sitter grammar setup. A restore that suddenly prints git errors is kulala's grammar clone, not the session — check `~/.local/share/nvim/kulala.nvim/tree-sitter-kulala-http` has an `origin` remote.
+**kulala.nvim declares `event = { "SessionLoadPost", "VimLeavePre" }` in its own upstream spec**, so every session restore loads it and runs its one-time tree-sitter grammar setup. A restore that suddenly prints git errors is kulala's grammar clone, not the session — check `~/.local/share/nvim/kulala.nvim/tree-sitter-kulala-http` has an `origin` remote. kulala ignores a failed `git remote add` and skips `init`/`remote add` whenever `.git` already exists, so a setup cut short between the two (plausibly nvim quitting, since `VimLeavePre` starts it too) fails with `'origin' does not appear to be a git repository` on every restore. Delete that directory; kulala re-clones it on the next load.
 
 ## LSP Configuration Gotchas
 
