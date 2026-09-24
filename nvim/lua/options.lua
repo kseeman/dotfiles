@@ -6,6 +6,7 @@ local o = vim.o
 o.relativenumber = true
 o.number = true
 o.scrolloff = 8
+require("configs.statuscolumn").setup() -- absolute and relative numbers together
 
 -- Folding options - Language-aware Treesitter folding
 o.foldmethod = "expr"
