@@ -399,15 +399,11 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 
 Current keys: `maven_test_args` (test runner).
 
-## Local Commands System
+## Machine-local Neovim code
 
-The `nvim/lua/local-commands.lua` file is git-ignored and provides project-specific commands. The system:
+`~/.userconfig/nvim/local.lua` holds machine-specific nvim code — commands, keymaps, autocmds — the way `~/.userconfig/zsh/local.zsh` does for the shell. `mappings.lua` runs it with `dofile` at the end of startup, and `:Reload local` runs it again, so whatever it defines must be safe to redefine (autocmds in an augroup with `clear = true`). A file that errors warns instead of being skipped silently.
 
-1. Checks if loaded via `pcall()` in `nvim/lua/mappings.lua`
-2. Only sets up commands if in the target project (uses git root detection)
-3. Provides custom commands for running/debugging specific applications with Maven
-
-This pattern allows work-specific configurations without polluting the main config.
+It replaced a git-ignored `nvim/lua/local-commands.lua` inside the checkout, which could be committed by a `.gitignore` edit and was lost with the checkout. The ignore entry stays, as a guard for stale copies on machines that still have one. Settings consumed by tracked code belong in the per-project files above, not here; code scoped to one project checks the git root itself.
 
 ## DAP (Debug Adapter Protocol) Setup
 
@@ -529,7 +525,7 @@ Consequences:
 ## Git Ignore Patterns
 
 Important git-ignored files:
-- `nvim/lua/local-commands.lua` - Project-specific commands (should be git-ignored for work-specific code)
+- `nvim/lua/local-commands.lua` - No longer loaded (superseded by `~/.userconfig/nvim/local.lua`); still ignored so a stale copy cannot be committed
 
 ## Mason Package Dependencies
 

@@ -46,6 +46,24 @@ map({ "n", "v" }, "<leader>fm", function()
   require("conform").format({ lsp_fallback = true, async = true })
 end, { desc = "Format buffer" })
 
+-- Machine-local nvim code, outside the repo like ~/.userconfig/zsh/local.zsh,
+-- so it can neither be committed nor lost with the checkout. A plain script,
+-- run again by `:Reload local`: anything it defines must be safe to redefine
+-- (autocmds in an augroup with `clear = true`). Errors warn rather than being
+-- swallowed, since a silently skipped file just looks like a missing setting.
+local USER_LOCAL = vim.fn.expand("~/.userconfig/nvim/local.lua")
+
+local function load_user_local()
+  if vim.fn.filereadable(USER_LOCAL) == 0 then
+    return false
+  end
+  local ok, err = pcall(dofile, USER_LOCAL)
+  if not ok then
+    vim.notify("Failed to load " .. USER_LOCAL .. ": " .. err, vim.log.levels.WARN)
+  end
+  return ok
+end
+
 -- Reload config modules without restarting nvim
 vim.api.nvim_create_user_command("Reload", function(opts)
   local targets = opts.fargs
@@ -63,13 +81,10 @@ vim.api.nvim_create_user_command("Reload", function(opts)
       require("mappings")
       vim.notify("Reloaded mappings", vim.log.levels.INFO)
     elseif target == "local" then
-      package.loaded["local-commands"] = nil
-      local ok, lc = pcall(require, "local-commands")
-      if ok then
-        lc.setup()
-        vim.notify("Reloaded local-commands", vim.log.levels.INFO)
-      else
-        vim.notify("local-commands.lua not found", vim.log.levels.WARN)
+      if vim.fn.filereadable(USER_LOCAL) == 0 then
+        vim.notify(USER_LOCAL .. " not found", vim.log.levels.WARN)
+      elseif load_user_local() then
+        vim.notify("Reloaded " .. USER_LOCAL, vim.log.levels.INFO)
       end
     else
       local module = "configs." .. target
@@ -201,9 +216,5 @@ map("n", "<leader>pr", ":ProfileRestart<CR>", { desc = "Restart with profile" })
 map("n", "<leader>pi", ":ProfileStatus<CR>", { desc = "Profile info" })
 map("n", "<leader>pc", ":ProfileClear<CR>", { desc = "Clear saved profile" })
 
--- Load local/work-specific commands if they exist (git-ignored)
-local ok, local_commands = pcall(require, "local-commands")
-if ok then
-  local_commands.setup()
-end
+load_user_local()
 

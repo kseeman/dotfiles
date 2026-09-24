@@ -1,4 +1,6 @@
 .DS_STORE
+# Superseded by ~/.userconfig/nvim/local.lua; kept so a stale copy on some
+# machine can never be committed.
 nvim/lua/local-commands.lua
 
 # Claude Code: local-only config must never land in this public repo
