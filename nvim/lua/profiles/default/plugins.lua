@@ -14,7 +14,7 @@ return {
     opts = {
       ensure_installed = {
         "java", "javascript", "typescript", "python", "lua", "json",
-        "html", "css", "bash", "markdown", "yaml",
+        "html", "css", "bash", "markdown", "yaml", "sql",
       },
     },
   },

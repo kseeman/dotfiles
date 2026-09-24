@@ -390,6 +390,12 @@ local on_attach = function(client, bufnr)
 end
 ```
 
+### Inlay hints
+
+Parameter names beside arguments, enabled globally in `mappings.lua` and toggled with `<leader>ih` (`<leader>th` is NvChad's theme picker). Enabling them client-side is only half of it: jdtls, ts_ls and omnisharp each send parameter-name hints only when asked in their settings. jdtls still omits a hint when the argument is a variable of the same name, a lambda, or a call into a class it has no source for, so a file of library calls can show very few.
+
+No SQL language server sends inlay hints, so `configs/sql-hints.lua` draws INSERT column names from the tree-sitter parse and follows the same global switch. It only works when the statement lists its columns — there is no database to ask.
+
 ## Test Runner System
 
 The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation that auto-detects test types and generates appropriate commands.

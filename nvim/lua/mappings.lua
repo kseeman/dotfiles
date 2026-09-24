@@ -40,10 +40,14 @@ end, { desc = "terminal toggle floating term" })
 -- globally, so every client that sends them (jdtls included) is covered.
 -- Servers still have to be asked for parameter-name hints in their settings;
 -- see configs/lspconfig.lua and the java profile. <leader>th is NvChad's theme
--- picker, hence <leader>ih.
+-- picker, hence <leader>ih. SQL has no server that sends them, so
+-- configs/sql-hints draws INSERT column names itself and follows this switch.
 vim.lsp.inlay_hint.enable(true)
+local sql_hints = require("configs.sql-hints")
+sql_hints.setup()
 map("n", "<leader>ih", function()
   vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())
+  sql_hints.refresh_all()
 end, { desc = "Toggle inlay hints" })
 
 -- Setup test runner
