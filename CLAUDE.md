@@ -375,7 +375,7 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 
 - **Playwright/Jest** (TypeScript/JavaScript): Detects `*.spec.ts`, `*.test.ts` files
 - **Java**: Detects `*Test.java`, `*Tests.java`, `*IT.java` files, generates Maven/Gradle commands
-  - Maven file/single-test runs start from the reactor root (topmost `pom.xml` in the repo) with `-pl <module> -am`, so sibling modules compile from source rather than stale `~/.m2` jars. They pass `-DskipTests=false`, plus anything in `maven_test_args` — set that from `local-commands.lua` when a project's POM filters tests out by a property (e.g. excluded JUnit tags).
+  - Maven file/single-test runs start from the reactor root (topmost `pom.xml` in the repo) with `-pl <module> -am`, so sibling modules compile from source rather than stale `~/.m2` jars. They pass `-DskipTests=false`, plus the project's `maven_test_args` (see **Per-project settings**) for a POM that filters tests out by a property (e.g. excluded JUnit tags).
 - **.NET**: Detects `*Test.cs`, `*Tests.cs` files, uses `dotnet test --filter`
 - **Python**: Detects `test_*.py`, `*_test.py` files, runs `python -m pytest` with the project's `.venv`/`venv` interpreter when one exists. Test-name lookup has its own Python pass, because the shared Playwright pattern also matches `s.split(",")`.
 
@@ -387,6 +387,17 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 - `<leader>dt` - Debug current test file
 - `<leader>dT` - Debug all tests
 - `<leader>ds` - Debug single test under cursor
+
+## Per-project settings
+
+`nvim/lua/configs/project-config.lua` reads `~/.userconfig/nvim/projects/<name>.lua`, where `<name>` is the directory name of the project's git root, and the file returns a table. It mirrors `~/.userconfig/tmux/{profiles,layouts}`: project specifics stay out of this public repo, one file per project.
+
+- **Looked up from the path being worked on, not the cwd**, the same reason jdtls starts per buffer: one nvim can span several projects, and a setting must not leak from one into another. This is what a module-level variable set from `local-commands.lua` got wrong.
+- **Read on every call, never cached.** Callers only use it when a command runs, so edits apply without a restart.
+- A broken file warns instead of failing silently, unlike the `pcall` around `local-commands.lua`.
+- Keyed by the git root's name, so a linked worktree (its own root, own name) does not pick up the main checkout's file.
+
+Current keys: `maven_test_args` (test runner).
 
 ## Local Commands System
 

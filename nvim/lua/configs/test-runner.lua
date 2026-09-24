@@ -219,16 +219,12 @@ function M.get_maven_project(filepath)
   end
 end
 
--- Extra arguments for every Maven file/single-test run, for a project whose
--- POM filters out the test being asked for (e.g. an excluded-groups property).
--- Project-specific, so set it from the git-ignored local-commands.lua:
---   require('configs.test-runner').maven_test_args = { '-Dsome.property=none' }
-M.maven_test_args = {}
-
 -- Build from the reactor root. `-am` also builds the module's dependencies
 -- from source, and those have no test matching -Dtest, which Surefire treats
 -- as a failure unless told otherwise. `-DskipTests=false` because a test run
--- by name should run even when the POM skips tests by default.
+-- by name should run even when the POM skips tests by default. A project whose
+-- POM filters the test out another way (e.g. an excluded-groups property) adds
+-- `maven_test_args` in its configs/project-config file.
 function M.maven_cmd(maven, args)
   local cmd = 'cd ' .. vim.fn.shellescape(maven.root) .. ' && mvn'
   if maven.module ~= maven.root then
@@ -236,7 +232,7 @@ function M.maven_cmd(maven, args)
       .. ' -am -Dsurefire.failIfNoSpecifiedTests=false'
   end
   cmd = cmd .. ' -DskipTests=false'
-  for _, arg in ipairs(M.maven_test_args) do
+  for _, arg in ipairs(require('configs.project-config').get(maven.root).maven_test_args or {}) do
     cmd = cmd .. ' ' .. vim.fn.shellescape(arg)
   end
   return cmd .. ' ' .. args
