@@ -183,7 +183,8 @@ The template sets styles only; `tmux.conf` owns formats and layout. Keeping that
 
 `claude/` is a self-contained Claude Code configuration installed into
 `~/.claude` by the shared installer. It is shared across platforms — nothing in
-it is OS-specific, so there is no `os/` counterpart.
+it is OS-specific, so there is no `os/` counterpart. `--no-claude` skips the
+whole step; nothing else in the install depends on it, so keep it that way.
 
 **This repo is public, and that constraint shapes the whole design.**
 `~/.claude` is a live state directory holding session transcripts,

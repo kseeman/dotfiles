@@ -8,6 +8,7 @@ set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=false
+INSTALL_CLAUDE=true
 
 # Set by the OS-specific installer sourced below.
 NVM_SH=""
@@ -20,6 +21,9 @@ for arg in "$@"; do
     case "$arg" in
         --dry-run)
             DRY_RUN=true
+            ;;
+        --no-claude)
+            INSTALL_CLAUDE=false
             ;;
     esac
 done
@@ -356,31 +360,39 @@ fi
 # whole. Only the curated, generic harness below is linked, which keeps
 # everything Claude generates outside this repository. This repo is public;
 # claude/README.md explains the boundary and what must never cross it.
-info "Linking Claude Code configuration..."
+#
+# --no-claude skips all of it, for someone who wants the editor and shell setup
+# but not these instructions, agents, skills and hooks in their own Claude Code.
+# Nothing else in the install depends on it.
+if [[ "$INSTALL_CLAUDE" == true ]]; then
+    info "Linking Claude Code configuration..."
 
-run "mkdir -p '$HOME/.claude'"
+    run "mkdir -p '$HOME/.claude'"
 
-link_config \
-    "$HOME/.dotfiles/claude/CLAUDE.md" \
-    "$HOME/.claude/CLAUDE.md"
+    link_config \
+        "$HOME/.dotfiles/claude/CLAUDE.md" \
+        "$HOME/.claude/CLAUDE.md"
 
-link_config \
-    "$HOME/.dotfiles/claude/agents" \
-    "$HOME/.claude/agents"
+    link_config \
+        "$HOME/.dotfiles/claude/agents" \
+        "$HOME/.claude/agents"
 
-link_config \
-    "$HOME/.dotfiles/claude/skills" \
-    "$HOME/.claude/skills"
+    link_config \
+        "$HOME/.dotfiles/claude/skills" \
+        "$HOME/.claude/skills"
 
-link_config \
-    "$HOME/.dotfiles/claude/hooks" \
-    "$HOME/.claude/hooks"
+    link_config \
+        "$HOME/.dotfiles/claude/hooks" \
+        "$HOME/.claude/hooks"
 
-# Merged, not linked — see merge_json_config. Read from the repo path rather
-# than ~/.dotfiles so a dry run works before that symlink exists.
-merge_json_config \
-    "$DOTFILES_DIR/claude/settings.json" \
-    "$HOME/.claude/settings.json"
+    # Merged, not linked — see merge_json_config. Read from the repo path rather
+    # than ~/.dotfiles so a dry run works before that symlink exists.
+    merge_json_config \
+        "$DOTFILES_DIR/claude/settings.json" \
+        "$HOME/.claude/settings.json"
+else
+    info "Skipping Claude Code configuration (--no-claude)."
+fi
 
 # -----------------------------------------------------------------------------
 # tmux configuration

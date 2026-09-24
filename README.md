@@ -16,6 +16,9 @@ cd ~/dotfiles
 ./install.sh
 ```
 
+Add `--no-claude` to skip the Claude Code configuration (see below). Flags
+combine: `./install.sh --dry-run --no-claude`.
+
 The installer detects the platform and runs the matching setup from `os/`. Run
 the dry run first. It is an opinionated personal setup, and it replaces some
 existing configuration (see below).
@@ -56,16 +59,17 @@ An existing file or directory at any of these paths is **moved aside** to
 merged rather than replaced, keeping your own settings in it.
 
 **If you use Claude Code,** note that the linked `~/.claude` files replace your
-global instructions, agents, skills and hooks with the ones in `claude/`.
-Skip or undo that part if you don't want them.
+global instructions, agents, skills and hooks with the ones in `claude/`. Run
+the installer with `--no-claude` to leave `~/.claude` untouched; nothing else
+depends on it.
 
 Nothing Linux-specific runs on macOS: no pacman or AUR packages, no Hyprland,
 no HyDE themes.
 
 ## What the installer does on Linux
 
-The same shared steps as macOS (Oh My Zsh, nvm, Neovim, tmux, Claude Code,
-`~/.userconfig`), plus:
+The same shared steps as macOS (Oh My Zsh, nvm, Neovim, tmux, Claude Code
+unless `--no-claude`, `~/.userconfig`), plus:
 
 - Packages from `os/linux/pacman.txt` (`pacman -S --needed`) and
   `os/linux/aur.txt` (via `paru` or `yay`). This includes a **Hyprland desktop**

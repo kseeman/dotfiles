@@ -96,7 +96,8 @@ claude/
 ## Install
 
 Handled by the repo's `./install.sh`, in its "Claude Code configuration"
-section. Nothing separate to run.
+section. Nothing separate to run. `./install.sh --no-claude` skips the section
+entirely, for someone who wants the rest of the dotfiles but not this harness.
 
 Both hooks need `jq`, which is already in `os/linux/pacman.txt` and
 `os/macos/Brewfile`.
