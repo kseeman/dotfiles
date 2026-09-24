@@ -375,6 +375,7 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 
 - **Playwright/Jest** (TypeScript/JavaScript): Detects `*.spec.ts`, `*.test.ts` files
 - **Java**: Detects `*Test.java`, `*Tests.java`, `*IT.java` files, generates Maven/Gradle commands
+  - Maven file/single-test runs start from the reactor root (topmost `pom.xml` in the repo) with `-pl <module> -am`, so sibling modules compile from source rather than stale `~/.m2` jars. They pass `-DskipTests=false`, plus anything in `maven_test_args` — set that from `local-commands.lua` when a project's POM filters tests out by a property (e.g. excluded JUnit tags).
 - **.NET**: Detects `*Test.cs`, `*Tests.cs` files, uses `dotnet test --filter`
 - **Python**: Detects `test_*.py`, `*_test.py` files, runs `python -m pytest` with the project's `.venv`/`venv` interpreter when one exists. Test-name lookup has its own Python pass, because the shared Playwright pattern also matches `s.split(",")`.
 
