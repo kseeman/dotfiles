@@ -457,7 +457,6 @@ if [[ ! -d "$HOME/.userconfig" ]]; then
     else
         mkdir -p "$HOME/.userconfig/zsh/extensions"
         mkdir -p "$HOME/.userconfig/zsh/secrets"
-        mkdir -p "$HOME/.userconfig/nvim/projects"
 
         cat > "$HOME/.userconfig/README.md" <<EOF
 # Local User Configuration
@@ -491,6 +490,11 @@ EOF
 else
     echo "~/.userconfig already exists."
 fi
+
+# Outside the first-run block on purpose: machines whose ~/.userconfig predates
+# the nvim files get the directory too. mkdir -p is a no-op when it exists and
+# never touches the files inside.
+run "mkdir -p '$HOME/.userconfig/nvim/projects'"
 
 # -----------------------------------------------------------------------------
 # Done
