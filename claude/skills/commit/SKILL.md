@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Use when it is time to commit — the user asks, or an approved implementation plan has reached a meaningful increment. Inspects status and the full diff, stages only what belongs to the change, proposes a message matching the repo's style, and confirms unless working inside an approved plan. Never pushes.
+description: Use when it is time to commit — the user asks, or an approved implementation plan has reached a meaningful increment. Inspects status and the full diff, stages only what belongs to the change, proposes a message matching the repo's style, and confirms unless working inside an approved plan. Commits only; pushing follows CLAUDE.md.
 argument-hint: [optional intent, or "commit now" to skip confirmation]
 ---
 
@@ -8,8 +8,8 @@ argument-hint: [optional intent, or "commit now" to skip confirmation]
 
 Prepare a commit.
 
-**Never push.** That is the line this skill holds. Committing is delegable;
-pushing is not.
+This skill commits and stops there. Whether to push afterwards is not its
+decision — see [Pushing](#pushing).
 
 ## 1. Inspect the state
 
@@ -83,10 +83,12 @@ plain words.
 
 Outside those two cases, ask.
 
-## Never push
+## Pushing
 
-Do not push, and do not offer to. This holds no matter how many increments have
-accumulated, how obviously ready the branch looks, or whether I approved a plan
-— an approved plan authorises commits, never a push.
+This skill never pushes as part of committing. Pushing is governed by the
+"Pushing and pull requests" section of `CLAUDE.md`, and by the project's own
+instructions where they say otherwise:
 
-If pushing seems like the natural next step, say so in one line and stop.
+- A working branch may be pushed, and a PR opened, without asking.
+- Never the default branch, never a force push, and **never a merge** — not a
+  PR, not a branch, not a fast-forward — without my explicit permission.

@@ -102,5 +102,8 @@ If a piece is too small to make sense alone, fold it into the next one.
 **If there was no approved plan** — a small change, an ad-hoc request — do not
 commit. Say the work is ready and let me decide.
 
-**Never push, in either case.** If the branch looks ready to push, say so in one
-line and stop there.
+**Pushing follows `CLAUDE.md`** ("Pushing and pull requests"), or the project's
+own instructions where they differ. With an approved plan, pushing the working
+branch as you go, and opening a PR at the end, needs no separate ask. Never the
+default branch, and **never merge** — opening the PR is where the work stops.
+Without an approved plan nothing is committed, so nothing is pushed.

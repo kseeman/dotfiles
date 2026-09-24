@@ -124,7 +124,7 @@ exactly where a weaker model costs more than it saves.
 | `/implement` | research → plan → implement → targeted validation → diff review → summary. Scales down for trivial changes rather than forcing ceremony. |
 | `/debug` | evidence → reproduce → trace → hypothesise → test → root cause → smallest fix → validate → regressions → summary. Diagnose first, modify second. |
 | `/review` | Independent review of the working tree, ordered by severity. Explicitly reports a clean result rather than inventing findings. |
-| `/commit` | Inspects status and the full diff, stages only what belongs to the change, proposes a message. Confirms first — except during an approved plan. Never pushes. |
+| `/commit` | Inspects status and the full diff, stages only what belongs to the change, proposes a message. Confirms first — except during an approved plan. Commits only; pushing follows `CLAUDE.md`. |
 
 All four can be invoked by typing them, and all four can be invoked by Claude
 when the task fits. Their `description` fields are written as trigger conditions
@@ -236,12 +236,12 @@ file is where it goes.
 Three lists in `settings.json`:
 
 - **`allow`** — routine local development runs without prompting: git
-  inspection, `git add`, `git commit`, `git fetch`, search tools, and the usual
-  build/test/lint/type-check commands for Node, .NET, Java, Python, Go, and
-  Rust.
-- **`ask`** — anything reaching a remote or rewriting history: `git push`,
-  `git commit --amend`, `gh pr create/merge`, `gh release`, `npm publish`,
-  `docker push`.
+  inspection, `git add`, `git commit`, `git fetch`, pushing a working branch
+  (`git push`, with `protect-git.sh` asking for protected branches),
+  `gh pr create/list`, search tools, and the usual build/test/lint/type-check
+  commands for Node, .NET, Java, Python, Go, and Rust.
+- **`ask`** — merging, rewriting history, and publishing: `gh pr merge`,
+  `git commit --amend`, `gh release`, `npm publish`, `docker push`.
 - **`deny`** — secrets. `.env` files, key material, cloud and cluster
   credentials, Terraform state, service-account JSON, `~/.ssh`, `~/.aws`,
   `~/.claude.json`. Denied paths are excluded from search as well as from
