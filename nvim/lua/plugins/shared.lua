@@ -188,10 +188,24 @@ return {
     "nvim-tree/nvim-tree.lua",
     opts = {
       view = {
-        width = function()
-          return math.floor(vim.o.columns * 0.15)
-        end,
+        -- Grows to fit expanded folders, capped so deep trees can't crowd
+        -- out the editor.
+        width = {
+          min = function()
+            return math.floor(vim.o.columns * 0.15)
+          end,
+          max = function()
+            return math.floor(vim.o.columns * 0.4)
+          end,
+        },
         preserve_window_proportions = true,
+      },
+      renderer = {
+        -- One line for folder chains with a single child, e.g. Java's
+        -- src/main/java/com/<org>, instead of an indent level per folder.
+        group_empty = true,
+        -- Pop out the name under the cursor when it's cut off.
+        full_name = true,
       },
       actions = {
         open_file = {
