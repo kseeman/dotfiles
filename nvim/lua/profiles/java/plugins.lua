@@ -302,12 +302,14 @@ return {
   },
 
   -- Mason tools for the Java profile. `sqlfluff` backs conform's SQL
-  -- formatter (configs/conform.lua), which formats .sql files on save. See
+  -- formatter (configs/conform.lua), which formats .sql files on save.
+  -- `html-lsp` is the binary behind the shared `html` server, which every
+  -- profile enables but nothing installed; Java web templates are HTML. See
   -- `plugins/shared.lua` for how this list is consumed.
   {
     "mason-org/mason.nvim",
     opts = {
-      ensure_installed = { "sqlfluff" },
+      ensure_installed = { "sqlfluff", "html-lsp" },
     },
   },
 
