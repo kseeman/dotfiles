@@ -1,7 +1,8 @@
 -- :KeyDrill — flashcards for keybindings. A description is shown, you press
 -- the keys that do it. Keys are read with getcharstr() and compared, never
--- fed to nvim, so a wrong guess cannot run anything. :KeyDrillReverse turns
--- it round: the keys are shown and you pick what they do from four choices.
+-- fed to nvim, so a wrong guess cannot run anything. It opens on a choice of
+-- direction; the other way round shows the keys and you pick what they do
+-- from four choices.
 --
 -- The cards come from the live keymap table, not a list kept here: whatever
 -- is mapped when the drill starts, with a `desc`, is fair game. That keeps it
@@ -123,21 +124,24 @@ local function draw(cards, state, n)
   return round
 end
 
-local function open_window(title, height)
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.bo[buf].bufhidden = "wipe"
-  local win = vim.api.nvim_open_win(buf, true, {
+-- Centred, so it is recomputed when the height changes after the menu.
+local function placement(height)
+  return {
     relative = "editor",
     width = WIDTH,
     height = height,
     row = math.floor((vim.o.lines - height) / 2) - 1,
     col = math.floor((vim.o.columns - WIDTH) / 2),
-    style = "minimal",
-    border = "rounded",
-    title = title,
-    title_pos = "center",
-  })
-  return buf, win
+  }
+end
+
+local function open_window(title, height)
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].bufhidden = "wipe"
+  local config = placement(height)
+  config.style, config.border = "minimal", "rounded"
+  config.title, config.title_pos = title, "center"
+  return buf, vim.api.nvim_open_win(buf, true, config)
 end
 
 -- Lines around the body (typed keys, or the choices) that every question has.
@@ -239,6 +243,32 @@ local function recognise(buf, s, card, cards)
   end
 end
 
+local MENU = {
+  "",
+  "  Which way round?",
+  "",
+  "  1  Description → keys    type the keys",
+  "  2  Keys → description    pick one of four",
+  "",
+  "  Esc to quit",
+}
+
+-- true for keys → description, false for the usual way, nil to quit.
+local function choose_direction(buf)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, MENU)
+  vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+  vim.api.nvim_buf_set_extmark(buf, ns, 1, 0, { end_col = #MENU[2], hl_group = "Title" })
+  vim.cmd.redraw()
+  while true do
+    local key = getkey()
+    if key == "1" or key == "2" then
+      return key == "2"
+    elseif key == CTRL_C or key == ESC then
+      return nil
+    end
+  end
+end
+
 local function summary(buf, s, missed)
   local lines = {
     "",
@@ -301,20 +331,16 @@ local function play(buf, round, cards, state, reverse)
   summary(buf, s, missed)
 end
 
--- opts.all: every normal-mode map with a desc, not just <leader> ones.
--- opts.prefix: only maps under these keys, in <> notation ("<leader>d").
--- opts.reverse: show the keys and pick the description.
-function M.start(opts)
-  opts = opts or {}
-  opts.prefix = opts.prefix or ""
-
-  local cards = collect(vim.api.nvim_get_current_buf(), opts)
-  local needed = opts.reverse and 2 or 1
-  if #cards < needed then
-    vim.notify("KeyDrill: not enough mapped keys with a description match", vim.log.levels.WARN)
+local function run(buf, win, cards)
+  local reverse = choose_direction(buf)
+  if reverse == nil then
     return
   end
-  if opts.reverse then
+  if reverse then
+    if #cards < 2 then
+      vim.notify("KeyDrill: keys → description needs at least two bindings", vim.log.levels.WARN)
+      return
+    end
     for _, card in ipairs(cards) do
       card.id = "reverse\t" .. card.id
     end
@@ -323,14 +349,28 @@ function M.start(opts)
   math.randomseed(vim.uv.hrtime())
   local state = load_state()
   local round = draw(cards, state, math.min(ROUND, #cards))
+  local body = reverse and math.min(CHOICES, #cards) or 1
+  vim.api.nvim_win_set_config(win, placement(FRAME_LINES + body))
+  play(buf, round, cards, state, reverse)
+end
+
+-- opts.all: every normal-mode map with a desc, not just <leader> ones.
+-- opts.prefix: only maps under these keys, in <> notation ("<leader>d").
+function M.start(opts)
+  opts = opts or {}
+  opts.prefix = opts.prefix or ""
+
+  local cards = collect(vim.api.nvim_get_current_buf(), opts)
+  if #cards == 0 then
+    vim.notify("KeyDrill: no mapped keys with a description match", vim.log.levels.WARN)
+    return
+  end
 
   local profile = vim.g.current_nvim_profile
   local title = " KeyDrill" .. (profile and (" ─ " .. profile) or "") .. " "
-  local body = opts.reverse and math.min(CHOICES, #cards) or 1
-  local buf, win = open_window(title, FRAME_LINES + body)
+  local buf, win = open_window(title, #MENU)
 
-  local ok, err = pcall(play, buf, round, cards, state, opts.reverse)
-  save_state(state)
+  local ok, err = pcall(run, buf, win, cards)
   if vim.api.nvim_win_is_valid(win) then
     vim.api.nvim_win_close(win, true)
   end

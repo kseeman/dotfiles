@@ -428,7 +428,7 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 
 ## Keybinding practice
 
-`:KeyDrill` (`nvim/lua/configs/keydrill.lua`) shows a binding's description and waits for its keys. Keys are read with `getcharstr()` and compared, never executed, so a wrong guess runs nothing. `:KeyDrill!` widens the pool from `<leader>` maps to every normal-mode map; `:KeyDrill <leader>d` narrows it to one prefix. `:KeyDrillReverse` takes the same arguments and runs the other way: it shows the keys and you pick the description from four, the wrong three being other mapped bindings.
+`:KeyDrill` (`nvim/lua/configs/keydrill.lua`) opens on a choice of direction. One way shows a binding's description and waits for its keys; these are read with `getcharstr()` and compared, never executed, so a wrong guess runs nothing. The other shows the keys and you pick the description from four, the wrong three being other mapped bindings. `:KeyDrill!` widens the pool from `<leader>` maps to every normal-mode map; `:KeyDrill <leader>d` narrows it to one prefix.
 
 - **The cards are the live keymap table**, global plus the starting buffer's local maps, so there is no list to keep in step with the config or the profile. **A map without a `desc` never appears.**
 - One card per description; if several keys share one, any of them is right.
