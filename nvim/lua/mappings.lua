@@ -194,6 +194,13 @@ vim.api.nvim_create_user_command("ProfileClear", function()
   profile_manager.clear_persisted_profile()
 end, { desc = "Clear persisted profile" })
 
+-- Keybinding flashcards drawn from the live keymap table; see configs/keydrill.
+-- `!` includes every map with a desc, not just <leader> ones; an argument
+-- narrows it to one prefix (`:KeyDrill <leader>d`).
+vim.api.nvim_create_user_command("KeyDrill", function(opts)
+  require("configs.keydrill").start({ all = opts.bang, prefix = opts.args })
+end, { nargs = "?", bang = true, desc = "Practise keybindings" })
+
 -- Copy file path to clipboard
 map("n", "<leader>fp", function()
   local path = vim.fn.expand('%:p')

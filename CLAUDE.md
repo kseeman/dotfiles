@@ -426,6 +426,14 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 - `<leader>dT` - Debug all tests
 - `<leader>ds` - Debug single test under cursor
 
+## Keybinding practice
+
+`:KeyDrill` (`nvim/lua/configs/keydrill.lua`) shows a binding's description and waits for its keys. Keys are read with `getcharstr()` and compared, never executed, so a wrong guess runs nothing. `:KeyDrill!` widens the pool from `<leader>` maps to every normal-mode map; `:KeyDrill <leader>d` narrows it to one prefix.
+
+- **The cards are the live keymap table**, global plus the starting buffer's local maps, so there is no list to keep in step with the config or the profile. **A map without a `desc` never appears.**
+- One card per description; if several keys share one, any of them is right.
+- Progress is a Leitner box per card in `stdpath("data")/keydrill.json`, per machine by design. The card id includes the keys, so rebinding something starts it over.
+
 ## Per-project settings
 
 `nvim/lua/configs/project-config.lua` reads `~/.userconfig/nvim/projects/<name>.lua`, where `<name>` is the directory name of the project's git root, and the file returns a table. It mirrors `~/.userconfig/tmux/{profiles,layouts}`: project specifics stay out of this public repo, one file per project.
