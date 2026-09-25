@@ -201,6 +201,11 @@ vim.api.nvim_create_user_command("KeyDrill", function(opts)
   require("configs.keydrill").start({ all = opts.bang, prefix = opts.args })
 end, { nargs = "?", bang = true, desc = "Practise keybindings" })
 
+-- The same the other way round: shown the keys, pick what they do.
+vim.api.nvim_create_user_command("KeyDrillReverse", function(opts)
+  require("configs.keydrill").start({ all = opts.bang, prefix = opts.args, reverse = true })
+end, { nargs = "?", bang = true, desc = "Practise keybindings, keys to description" })
+
 -- Copy file path to clipboard
 map("n", "<leader>fp", function()
   local path = vim.fn.expand('%:p')

@@ -1,6 +1,7 @@
 -- :KeyDrill — flashcards for keybindings. A description is shown, you press
 -- the keys that do it. Keys are read with getcharstr() and compared, never
--- fed to nvim, so a wrong guess cannot run anything.
+-- fed to nvim, so a wrong guess cannot run anything. :KeyDrillReverse turns
+-- it round: the keys are shown and you pick what they do from four choices.
 --
 -- The cards come from the live keymap table, not a list kept here: whatever
 -- is mapped when the drill starts, with a `desc`, is fair game. That keeps it
@@ -10,12 +11,14 @@
 --
 -- Progress is a Leitner box per card, kept per machine under stdpath("data").
 -- A miss sends a card back to box 0, a hit moves it up one, and lower boxes
--- are drawn more often.
+-- are drawn more often. The two directions are scored separately, since
+-- recognising a binding is easier than recalling it.
 local M = {}
 
 local STATE_FILE = vim.fn.stdpath("data") .. "/keydrill.json"
 local ROUND = 20
 local MAX_BOX = 5
+local CHOICES = 4
 local WIDTH = 60
 local ESC = vim.keycode("<Esc>")
 local CTRL_C = vim.keycode("<C-c>")
@@ -120,10 +123,9 @@ local function draw(cards, state, n)
   return round
 end
 
-local function open_window(title)
+local function open_window(title, height)
   local buf = vim.api.nvim_create_buf(false, true)
   vim.bo[buf].bufhidden = "wipe"
-  local height = 9
   local win = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
     width = WIDTH,
@@ -138,25 +140,27 @@ local function open_window(title)
   return buf, win
 end
 
--- Lines: question, typed keys, feedback, score. `hl` colours the feedback.
+-- Lines around the body (typed keys, or the choices) that every question has.
+local FRAME_LINES = 7
+
+-- Lines: question, body, feedback, score. `hl` colours the feedback.
 local function render(buf, s)
   local score = string.format("✓ %d   ✗ %d   streak %d", s.right, s.wrong, s.streak)
   local progress = string.format("%d/%d", s.index, s.total)
-  local lines = {
-    "",
-    "  " .. s.question,
-    "",
-    "  > " .. s.typed .. "_",
+  local lines = { "", "  " .. s.question, "" }
+  vim.list_extend(lines, s.body)
+  vim.list_extend(lines, {
     "",
     "  " .. (s.feedback or ""),
     "",
     "  " .. score .. string.rep(" ", WIDTH - 4 - vim.fn.strdisplaywidth(score .. progress)) .. progress,
-  }
+  })
+  local feedback = #lines - 3
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
   vim.api.nvim_buf_set_extmark(buf, ns, 1, 0, { end_col = #lines[2], hl_group = "Title" })
   if s.hl then
-    vim.api.nvim_buf_set_extmark(buf, ns, 5, 0, { end_col = #lines[6], hl_group = s.hl })
+    vim.api.nvim_buf_set_extmark(buf, ns, feedback - 1, 0, { end_col = #lines[feedback], hl_group = s.hl })
   end
   vim.cmd.redraw()
 end
@@ -171,10 +175,10 @@ end
 
 -- true/false for a finished answer, nil to quit. Stops at the first key that
 -- cannot lead to any right answer, so a wrong guess needs no confirming.
-local function ask(buf, s, card)
+local function recall(buf, s, card)
   local typed = ""
   while true do
-    s.typed = display(typed)
+    s.body = { "  > " .. display(typed) .. "_" }
     render(buf, s)
     local key = getkey()
     if not is_noise(key) then
@@ -191,9 +195,46 @@ local function ask(buf, s, card)
       if done then
         return true
       elseif not possible then
-        s.typed = display(typed)
+        s.body = { "  > " .. display(typed) }
         return false
       end
+    end
+  end
+end
+
+-- Distractors are other cards drawn at random, so the choices are always
+-- things that really are mapped.
+local function choices_for(card, cards)
+  local others = vim.tbl_filter(function(other)
+    return other ~= card
+  end, cards)
+  local choices = { card }
+  while #choices < CHOICES and #others > 0 do
+    table.insert(choices, table.remove(others, math.random(#others)))
+  end
+  for i = #choices, 2, -1 do
+    local j = math.random(i)
+    choices[i], choices[j] = choices[j], choices[i]
+  end
+  return choices
+end
+
+-- Reverse direction: pick the description by number. Same results as recall.
+local function recognise(buf, s, card, cards)
+  local choices = choices_for(card, cards)
+  s.body = {}
+  for i, choice in ipairs(choices) do
+    table.insert(s.body, string.format("  %d  %s", i, choice.desc))
+  end
+  render(buf, s)
+  while true do
+    local key = getkey()
+    if key == CTRL_C or key == ESC then
+      return nil
+    end
+    local pick = choices[tonumber(key) or 0]
+    if pick then
+      return pick == card
     end
   end
 end
@@ -222,13 +263,18 @@ local function summary(buf, s, missed)
   getkey()
 end
 
-local function play(buf, round, state)
+local function play(buf, round, cards, state, reverse)
   local s = { right = 0, wrong = 0, streak = 0, index = 0, total = #round }
   local missed = {}
 
   for i, card in ipairs(round) do
-    s.index, s.question = i, card.desc
-    local result = ask(buf, s, card)
+    -- Feedback reveals whichever half the question did not show.
+    local question, reveal = card.desc, card.answer
+    if reverse then
+      question, reveal = card.answer, card.desc
+    end
+    s.index, s.question = i, question
+    local result = (reverse and recognise or recall)(buf, s, card, cards)
     if result == nil then
       return
     end
@@ -236,13 +282,13 @@ local function play(buf, round, state)
     if result then
       s.right, s.streak = s.right + 1, s.streak + 1
       state[card.id] = math.min((state[card.id] or 0) + 1, MAX_BOX)
-      s.feedback, s.hl = "✓ " .. card.answer, "DiagnosticOk"
+      s.feedback, s.hl = "✓ " .. reveal, "DiagnosticOk"
     else
       s.wrong, s.streak = s.wrong + 1, 0
       state[card.id] = 0
       table.insert(missed, card)
       -- Wait on a miss so the answer gets read before the next question.
-      s.feedback, s.hl = "✗ it's " .. card.answer .. "   (any key)", "DiagnosticError"
+      s.feedback, s.hl = "✗ it's " .. reveal .. "   (any key)", "DiagnosticError"
       render(buf, s)
       if getkey() == CTRL_C then
         return
@@ -257,14 +303,21 @@ end
 
 -- opts.all: every normal-mode map with a desc, not just <leader> ones.
 -- opts.prefix: only maps under these keys, in <> notation ("<leader>d").
+-- opts.reverse: show the keys and pick the description.
 function M.start(opts)
   opts = opts or {}
   opts.prefix = opts.prefix or ""
 
   local cards = collect(vim.api.nvim_get_current_buf(), opts)
-  if #cards == 0 then
-    vim.notify("KeyDrill: no mapped keys with a description match", vim.log.levels.WARN)
+  local needed = opts.reverse and 2 or 1
+  if #cards < needed then
+    vim.notify("KeyDrill: not enough mapped keys with a description match", vim.log.levels.WARN)
     return
+  end
+  if opts.reverse then
+    for _, card in ipairs(cards) do
+      card.id = "reverse\t" .. card.id
+    end
   end
 
   math.randomseed(vim.uv.hrtime())
@@ -273,9 +326,10 @@ function M.start(opts)
 
   local profile = vim.g.current_nvim_profile
   local title = " KeyDrill" .. (profile and (" ─ " .. profile) or "") .. " "
-  local buf, win = open_window(title)
+  local body = opts.reverse and math.min(CHOICES, #cards) or 1
+  local buf, win = open_window(title, FRAME_LINES + body)
 
-  local ok, err = pcall(play, buf, round, state)
+  local ok, err = pcall(play, buf, round, cards, state, opts.reverse)
   save_state(state)
   if vim.api.nvim_win_is_valid(win) then
     vim.api.nvim_win_close(win, true)
