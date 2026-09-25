@@ -393,7 +393,18 @@ return {
       "ibhagwan/fzf-lua",
     },
     config = function()
-      require("spring_boot").setup()
+      -- Spring Boot's inlay hints are dropped so jdtls is the only client
+      -- sending them. Neovim 0.12 keeps one version for all clients' hints,
+      -- so after an edit one client's stale columns get drawn against the new
+      -- text: "Invalid 'col': out of range" on pressing Return. Fixed upstream
+      -- (neovim#36318); remove this once on a release with the fix.
+      -- A per-client handler rather than removing the capability, because
+      -- the server may register inlay hints dynamically.
+      require("spring_boot").setup({
+        server = {
+          handlers = { ["textDocument/inlayHint"] = function() end },
+        },
+      })
     end,
   },
 }
