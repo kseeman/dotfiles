@@ -112,7 +112,7 @@ Inside nvim, use these commands:
 - `<C-`>` - Toggle floating terminal
 
 ### Git Integration
-- `<leader>gc` - Git commits (Telescope)
+- `<leader>gc` - Git commits; `<CR>` lists the files a commit changed and opens one
 - `<leader>gb` - Git branches
 - `<leader>gs` - Git status
 - `<leader>gf` - Git files

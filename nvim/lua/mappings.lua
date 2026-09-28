@@ -132,8 +132,8 @@ end, { desc = "LSP implementations" })
 
 -- Git mappings
 map("n", "<leader>gc", function()
-  require("telescope.builtin").git_commits()
-end, { desc = "Git commits" })
+  require("configs.commits").pick()
+end, { desc = "Git commits, open a changed file" })
 
 map("n", "<leader>gb", function()
   require("telescope.builtin").git_branches()
