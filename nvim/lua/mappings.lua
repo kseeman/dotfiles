@@ -246,6 +246,12 @@ map("n", "<leader>fR", function()
   require("telescope.builtin").pickers()
 end, { desc = "Recent searches" })
 
+-- NvChad's <leader>fw hands the prompt to ripgrep as a regex, so `Foo<T>(`
+-- is an unclosed group and silently matches nothing. This one is literal.
+map("n", "<leader>fW", function()
+  require("telescope.builtin").live_grep { additional_args = { "--fixed-strings" }, prompt_title = "Live Grep (literal)" }
+end, { desc = "telescope live grep literal" })
+
 -- Profile switching keymaps
 map("n", "<leader>ps", ":ProfileSwitch<CR>", { desc = "Switch profile" })
 map("n", "<leader>pr", ":ProfileRestart<CR>", { desc = "Restart with profile" })
