@@ -330,6 +330,18 @@ uwsm then exits before Hyprland is ever reached, and the display manager returns
 
 So the installer checks the Exec line as well as the config, with `uwsm start -n` (writes and starts nothing, safe from inside a running session). **It reads the line from the template and substitutes it exactly as the entry will be**, rather than rebuilding an equivalent command — a check that passes while the installed entry is broken is worse than no check. Verifying the config proves the compositor would accept it and says nothing about the command line that launches it.
 
+#### Colours go through the palette, never into a config file
+
+`os/linux/desktop/lib/palette.lua` is the one place a colour is written down. Every module does `require("lib.palette")` and reads a name; **no config file contains a hex literal.** It exposes `rgb()`/`rgba()` because Hyprland takes `rgb(RRGGBB)` rather than CSS hex, while consumers that do take hex read the values directly.
+
+This is sequencing, not neatness. The theme engine is deliberately deferred until the consumers it must reload exist (see the theme-engine issue), and that deferral only costs nothing if colours are already funnelled through one file. When it lands, `palette.lua` loads generated data and falls back to today's literals — **one file body changes and no consumer is touched.** Written the other way round, every module from P2 through P5 would need hunting down.
+
+The fallback values are a floor, not a theme: a missing or half-written cache must give a dull desktop, never an unstartable session, because a config that errors takes the login with it.
+
+The same discipline applies per consumer as each arrives — waybar gets an `@define-color` block, rofi a `*` block, kitty a single included file. That is already how `os/linux/hyde-themes/Custom/{waybar,rofi,kitty}.theme` are written, so the pattern is borrowed rather than invented.
+
+Note that `--verify-config` does check colour *values*, not just syntax: a malformed one fails with `invalid color "…"`, so a palette mistake is caught before a login rather than at one.
+
 #### Verifying a config runs it
 
 `Hyprland --verify-config` parses without starting a session, which is what makes it usable as an install step and a pre-commit check. But a Lua config *is* a Lua program, and verifying it runs that program. Measured on 0.56.2:
