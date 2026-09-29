@@ -619,6 +619,30 @@ Two details that are not preferences:
 throughout, and supporting light would mean every consumer template growing a
 second branch.
 
+#### Idle behaviour is the bar's to change
+
+`hypridle` runs as the packaged **user unit** rather than as a bare process, and
+reads its default path — `$XDG_CONFIG_HOME/hypr/hypridle.conf` — rather than
+being pointed at the repo with `-c`.
+
+That is not a style choice. The bar's idle settings surface regenerates exactly
+that file and then runs `systemctl --user restart hypridle`. Starting the binary
+ourselves from a repo path meant the surface wrote to a file nothing read *and*
+restarted a unit that was not running: it looked like it worked and changed
+nothing, twice over.
+
+`install.sh` **copies** the repo's `hypridle.conf` there, and only when absent. A
+symlink would have the bar rewriting a tracked file in this repo the first time
+a timeout changed — the same write-through hazard HyDE's `cp -rf` used to pose.
+So this repo supplies the defaults and the bar owns the file thereafter, which
+is the right split: timeouts are a preference, not architecture. The consequence
+to remember is that **editing the repo's `hypridle.conf` does not reach a
+machine that already has one.**
+
+`buildConf()` in the vendored `IdleLock.qml` had to grow `unlock_cmd` and the
+two `ignore_*_inhibit` settings, because it rewrites the whole file and
+upstream's version omits them.
+
 #### The wallpaper setter
 
 `quickshell/scripts/wallpaper.sh` implements the contract the vendored
