@@ -316,6 +316,20 @@ Details that are load-bearing rather than incidental:
 - **A failing root is collected, not fatal.** Aborting on the first would leave the desktop half restored with no report of where it stopped, and `.config/gtk-4.0` sits twelve of thirty-one in.
 - **Packages are recorded, never reinstalled.** Reinstating a package set is a decision about the system, not about configuration.
 
+#### The session entry, and the `--` in it
+
+`os/linux/desktop/session/hyprland-dotfiles.desktop.in` installs a second login session running the Lua config, alongside whatever is already there. The config is passed with `--config` rather than by exporting `HYPRLAND_CONFIG`, which HyDE assigns unconditionally from its own uwsm env fragment — `--config` outranks the variable and needs no HyDE file edited. Removing the entry reverts to HyDE entirely.
+
+**The `--` before the compositor is load-bearing.** uwsm parses its command line with argparse, takes the compositor as a plain positional, and never calls `parse_known_args`, so a trailing `--config <path>` is read as an option to *uwsm* and rejected:
+
+```
+uwsm: error: unrecognized arguments: --config /home/…/init.lua
+```
+
+uwsm then exits before Hyprland is ever reached, and the display manager returns to the greeter — which presents as a failed login, not a malformed command. HyDE's own entry needs no `--` only because a Desktop Entry ID takes no trailing options.
+
+So the installer checks the Exec line as well as the config, with `uwsm start -n` (writes and starts nothing, safe from inside a running session). **It reads the line from the template and substitutes it exactly as the entry will be**, rather than rebuilding an equivalent command — a check that passes while the installed entry is broken is worse than no check. Verifying the config proves the compositor would accept it and says nothing about the command line that launches it.
+
 #### Verifying a config runs it
 
 `Hyprland --verify-config` parses without starting a session, which is what makes it usable as an install step and a pre-commit check. But a Lua config *is* a Lua program, and verifying it runs that program. Measured on 0.56.2:

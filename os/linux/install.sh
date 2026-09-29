@@ -269,6 +269,36 @@ install_desktop_session() {
         return 1
     fi
 
+    # Verifying the config proved the compositor would accept it and proved
+    # nothing about the command line that launches it: a malformed Exec fails
+    # inside uwsm's argument parsing, before Hyprland is reached, and a display
+    # manager reports that as a failed login rather than a bad command. A dry
+    # run writes and starts nothing, so it is safe to do from inside a running
+    # session, and it is the only check that covers the Exec line itself.
+    local exec_line dry_run_line
+
+    # Read from the template and substituted exactly as the entry will be, so
+    # this tests the line the display manager will actually run. Rebuilding an
+    # equivalent command here would let the two drift, and a check that passes
+    # while the installed entry is broken is worse than no check.
+    exec_line="$(sed -n 's/^Exec=//p' "$template" | sed "s|@INIT_LUA@|$init_lua|")"
+
+    if command -v uwsm &> /dev/null && [[ "$exec_line" == uwsm\ start\ * ]]; then
+        info "Checking the session command line..."
+
+        dry_run_line="${exec_line/uwsm start/uwsm start -n}"
+
+        if ! eval "$dry_run_line" &> /dev/null; then
+            echo "uwsm rejected the session command line:"
+            eval "$dry_run_line" 2>&1 | sed 's/^/    /'
+            echo ""
+            echo "Refusing to install a session entry that cannot start."
+            return 1
+        fi
+
+        echo "    uwsm accepts it"
+    fi
+
     info "Installing the 'Hyprland (dotfiles)' session..."
 
     # Needs root: session entries are system-wide. Written via a temporary file
