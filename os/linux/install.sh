@@ -231,6 +231,34 @@ install_desktop_session() {
 # nothing is displaced. Worth remembering that HyDE deploys with `cp -rf`,
 # which writes *through* a symlink -- if it ever grows a scripts/ directory,
 # this link is how its contents would land in the repo.
+# Seeds ~/.config/hypr/hypridle.conf, which is where hypridle looks by default
+# and where the bar's idle settings surface writes.
+#
+# **Copied, and only when absent.** A symlink would have the bar rewriting a
+# tracked file in this repo the first time an idle timeout changed -- the same
+# write-through hazard HyDE's cp -rf used to pose. Copying once means this repo
+# supplies the defaults and the bar owns the file thereafter, which is the right
+# split: timeouts are a preference, not architecture.
+#
+# The consequence to remember: editing the repo's hypridle.conf does not reach a
+# machine that already has one.
+install_hypridle_conf() {
+    local src="$DOTFILES_DIR/os/linux/desktop/hypridle.conf"
+    local dest="$HOME/.config/hypr/hypridle.conf"
+
+    [[ -f "$src" ]] || return 0
+
+    if [[ -e "$dest" ]]; then
+        echo "Left ${dest/#$HOME/~}: it already exists and the bar may own it."
+        return 0
+    fi
+
+    info "Seeding the idle configuration..."
+
+    run "mkdir -p '$HOME/.config/hypr'"
+    run "cp '$src' '$dest'"
+}
+
 install_pill_scripts() {
     local scripts="$DOTFILES_DIR/os/linux/desktop/quickshell/scripts"
 
@@ -282,6 +310,8 @@ os_link_configs() {
     install_pill_flags
 
     install_pill_scripts
+
+    install_hypridle_conf
 
     # Kitty and Fastfetch are linked whether or not HyDE is present.
     #
