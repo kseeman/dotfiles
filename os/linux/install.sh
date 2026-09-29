@@ -373,6 +373,20 @@ install_pill_scripts() {
     link_config "$scripts" "$HOME/.config/hypr/scripts"
 }
 
+# Generates the configs that carry colours -- the lock screen today, more as
+# each consumer stops being hand-written. The session does this at login too;
+# doing it here means a fresh machine has them before its first login rather
+# than one login later.
+install_theme() {
+    local render="$DOTFILES_DIR/os/linux/desktop/render-theme.lua"
+
+    [[ -x "$render" ]] || return 0
+
+    info "Rendering theme files from the palette..."
+
+    run "lua '$render' --verbose"
+}
+
 install_pill_palette() {
     local script="$DOTFILES_DIR/os/linux/desktop/quickshell/apply-palette.sh"
 
@@ -393,7 +407,10 @@ os_link_configs() {
     # installed, never a replacement for it.
     install_desktop_session
 
-    # Writes generated files outside the repo, so it is safe alongside HyDE.
+    # All three write generated files outside the repo, so they are safe
+    # alongside HyDE.
+    install_theme
+
     install_pill_palette
 
     install_pill_scripts
