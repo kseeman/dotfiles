@@ -336,11 +336,17 @@ So the installer checks the Exec line as well as the config, with `uwsm start -n
 
 | | during `--verify-config` |
 |---|---|
-| `os.execute(...)` top level | runs |
 | `hl.exec_cmd(...)` top level | runs — launches the application |
-| inside `hl.on("hyprland.start", ...)` | does not run |
+| `os.execute(...)` / `io.popen(...)` | runs |
+| `hl.dispatch(hl.dsp.exec_cmd(...))` | runs |
+| an exec indented inside a top-level `for` | runs |
+| an exec in a function called at the top level | runs |
+| `hl.dsp.exec_cmd(...)` passed to `hl.bind` | **does not** — it builds a dispatcher |
+| anything inside `hl.on("hyprland.start", ...)` | does not run |
 
-So **every exec belongs inside `hl.on("hyprland.start", ...)`**, which is also how Hyprland's own example config is written. Otherwise verifying launches the autostart set — on every commit, for a hook. `verify-config.sh` warns about unindented execs as a reminder; it is a heuristic, not a parser, so it warns rather than fails.
+So **every exec belongs inside `hl.on("hyprland.start", ...)`**, which is also how Hyprland's own example config is written. Otherwise verifying launches the autostart set — on every commit, for a hook.
+
+The last two rows are why `verify-config.sh` checks this **per file rather than per line**: indentation says nothing (an exec inside a top-level loop still runs), and an exec reached through a function call cannot be spotted by grep at all. So it asks whether a file that execs has an `hl.on("hyprland.start")` to put them in. It scans the entry point **and every `.lua` beside it** — every exec in this desktop lives in `config/startup.lua`, which a check reading only the file it was given would never open. Bindings are not flagged because `hl.dsp.exec_cmd` does not contain the substring `hl.exec_cmd`. Still a warning rather than a failure: a file may legitimately hold a helper only ever called from inside the callback.
 
 It checks both the exit status and the `config ok` line. The status is correct on 0.56.2; agreeing with both costs nothing against a release where either changes.
 
