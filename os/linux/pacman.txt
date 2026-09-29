@@ -63,15 +63,19 @@ ttf-cascadia-code-nerd
 
 # Session core
 hyprland
+# External monitor brightness, which the bar shells out to.
+ddcutil
+
 # The bar, launcher and notification surfaces are a Quickshell shell rather
 # than waybar: the media popup the design calls for -- album art with a
 # draggable scrubber -- is not something waybar can be configured into.
-ddcutil
 quickshell
 hyprlock
 hypridle
-waybar
-rofi
+# The notification fallback, not the notification server. The bar claims
+# org.freedesktop.Notifications at startup and only one process may hold it, so
+# dunst is never D-Bus activated while the bar is alive -- and starts itself if
+# the bar dies, which is worth keeping.
 dunst
 sddm
 polkit-gnome
