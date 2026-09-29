@@ -8,10 +8,49 @@ This is a personal dotfiles repository covering Neovim, zsh, and terminal config
 
 ## Change workflow
 
+**Two flows, chosen by what is being changed.** Desktop work can be tested
+without being installed; everything else cannot, and that single fact is what
+splits them.
+
+### Desktop and rice work — `os/linux/desktop/**`
+
+Stays on a branch until it is tested, then goes through a pull request.
+
+1. **Fetch, then create the worktree.**
+2. **Work in the worktree**, committing meaningful increments.
+3. **Test in a nested compositor**, against the worktree's own config:
+   ```sh
+   os/linux/desktop/nested.sh --config .claude/worktrees/<name>/os/linux/desktop/init.lua
+   ```
+4. **Push the branch and open a PR. Stop there.** Merging is the user's.
+
+**The PR is staging, not review.** There is still no second reviewer here, so
+the global "a PR is a proposal" reasoning does not apply. It exists because a
+rice is half-finished for long stretches, and `main` is *installed* — landing
+an unfinished look means living in it, and blocks unrelated dotfiles work from
+being tested at the same time.
+
+**Nested testing is only honest if the config under test is self-contained.**
+Anything reaching for `~/.dotfiles` resolves to the *main* checkout, so a
+worktree silently tests `main` instead — which is how two bars ended up stacked
+on top of each other. Paths must derive from the config's own location, the way
+`init.lua` does with `debug.getinfo`.
+
+**What nested cannot prove**, and still needs a real login:
+
+- monitor layout and anything in `hypr/local.lua`
+- the uwsm session entry and the display manager path
+- NVIDIA environment and hardware cursors
+- multi-monitor behaviour, including the workspace rules
+
+A change resting on any of those is tested after the merge, not before.
+
+### Everything else — nvim, zsh, tmux, the installer
+
 Isolate the work in a worktree, land it on `main` locally, stop for testing,
-push once it passes. **No pull requests.** There is no second reviewer here, so
-a PR adds a round trip and delivers nothing — this overrides the global
-preference for handing work over as a PR.
+push once it passes. **No pull request**, because nothing here can be tried
+until it is on `main` — a PR would add a round trip before the only test that
+counts.
 
 The order is forced by how the repo is installed. `~/.dotfiles` symlinks to this
 checkout and everything else resolves through it — `~/.zshrc`,
