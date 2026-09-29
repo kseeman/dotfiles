@@ -15,6 +15,7 @@ set -euo pipefail
 #   the merged settings stay: what they were before the merge cannot be told
 #   from here, and the installer's backups are left for restoring by hand.
 # - The HyDE themes and wallbash templates it installed are removed.
+# - The login session entry is removed, since a stale one fails a login.
 #
 # Packages, Oh My Zsh, Node versions and ~/.config/dotfiles are left alone and only
 # reported: they may have been there before, or be in use since. The tool
@@ -269,6 +270,32 @@ for template in "$DOTFILES_DIR"/os/linux/wallbash/*.dcol; do
         echo "Left ${dest/#$HOME/$TILDE}: it differs from the repo's copy."
     fi
 done
+
+# -----------------------------------------------------------------------------
+# The session entry (Linux)
+# -----------------------------------------------------------------------------
+
+# Outside $HOME, installed with sudo, and therefore missed by every scan above.
+#
+# Worth more care than a dangling symlink: what is left behind is an entry at
+# the login screen pointing at a config that no longer exists, so choosing it
+# fails the login rather than doing nothing. Someone would meet that at a
+# greeter, which is the worst place to debug anything.
+#
+# Only removed when its Exec still names this repo's init.lua. A hand-edited
+# entry, or one another tool happens to have put at the same path, is left and
+# reported.
+session_entry="/usr/share/wayland-sessions/hyprland-dotfiles.desktop"
+
+if [[ -f "$session_entry" ]]; then
+    if grep -q "$DOTFILES_DIR/os/linux/desktop/init.lua" "$session_entry" 2> /dev/null \
+        || grep -q "\.dotfiles/os/linux/desktop/init.lua" "$session_entry" 2> /dev/null; then
+        info "Removing the session entry..."
+        run "sudo rm '$session_entry'"
+    else
+        echo "Left $session_entry: its Exec does not name this repo."
+    fi
+fi
 
 # -----------------------------------------------------------------------------
 # Downloaded tools
