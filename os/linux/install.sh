@@ -373,12 +373,28 @@ install_pill_scripts() {
     link_config "$scripts" "$HOME/.config/hypr/scripts"
 }
 
-install_pill_palette() {
-    local script="$DOTFILES_DIR/os/linux/desktop/quickshell/apply-palette.sh"
+# Generates every config that carries a colour, from lib/palette.lua. The
+# session does this at login too; doing it here means a fresh machine has them
+# before its first login rather than one login later.
+install_theme() {
+    local render="$DOTFILES_DIR/os/linux/desktop/render-theme.lua"
+
+    [[ -x "$render" ]] || return 0
+
+    info "Rendering theme files from the palette..."
+
+    run "lua '$render' --verbose"
+}
+
+# The bar ignores generated colours entirely while paletteMode is "static",
+# which is its default, so this has to run once before the colours mean
+# anything. Idempotent, so it simply runs every install.
+install_pill_flags() {
+    local script="$DOTFILES_DIR/os/linux/desktop/quickshell/pill-flags.sh"
 
     [[ -x "$script" ]] || return 0
 
-    info "Applying the palette to the bar..."
+    info "Setting the bar to use generated colours..."
 
     run "$script"
 }
@@ -393,8 +409,11 @@ os_link_configs() {
     # installed, never a replacement for it.
     install_desktop_session
 
-    # Writes generated files outside the repo, so it is safe alongside HyDE.
-    install_pill_palette
+    # All three write generated files outside the repo, so they are safe
+    # alongside HyDE.
+    install_theme
+
+    install_pill_flags
 
     install_pill_scripts
 
