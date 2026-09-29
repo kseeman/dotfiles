@@ -373,10 +373,9 @@ install_pill_scripts() {
     link_config "$scripts" "$HOME/.config/hypr/scripts"
 }
 
-# Generates the configs that carry colours -- the lock screen today, more as
-# each consumer stops being hand-written. The session does this at login too;
-# doing it here means a fresh machine has them before its first login rather
-# than one login later.
+# Generates every config that carries a colour, from lib/palette.lua. The
+# session does this at login too; doing it here means a fresh machine has them
+# before its first login rather than one login later.
 install_theme() {
     local render="$DOTFILES_DIR/os/linux/desktop/render-theme.lua"
 
@@ -387,12 +386,15 @@ install_theme() {
     run "lua '$render' --verbose"
 }
 
-install_pill_palette() {
-    local script="$DOTFILES_DIR/os/linux/desktop/quickshell/apply-palette.sh"
+# The bar ignores generated colours entirely while paletteMode is "static",
+# which is its default, so this has to run once before the colours mean
+# anything. Idempotent, so it simply runs every install.
+install_pill_flags() {
+    local script="$DOTFILES_DIR/os/linux/desktop/quickshell/pill-flags.sh"
 
     [[ -x "$script" ]] || return 0
 
-    info "Applying the palette to the bar..."
+    info "Setting the bar to use generated colours..."
 
     run "$script"
 }
@@ -411,7 +413,7 @@ os_link_configs() {
     # alongside HyDE.
     install_theme
 
-    install_pill_palette
+    install_pill_flags
 
     install_pill_scripts
 
