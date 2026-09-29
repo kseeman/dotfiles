@@ -419,25 +419,25 @@ os_link_configs() {
 
     if hyde_owns_desktop_configs; then
         # Additive: theme directories HyDE doesn't own and won't overwrite, so
-        # they install even though the desktop configs below are left alone.
+        # they install even though its own generated configs are replaced below.
         install_hyde_themes
 
         # Wallbash only exists with HyDE, so this belongs in this branch.
         install_wallbash_templates
-
-        info "Skipping Kitty and Fastfetch configuration..."
-
-        echo "HyDE manages ~/.config/kitty and ~/.config/fastfetch here."
-        echo "Both left untouched to preserve the existing Hyprland setup."
-        echo ""
-        echo "The shell still runs the Fastfetch banner on startup; it just"
-        echo "renders with HyDE's config rather than this repo's."
-
-        return
     fi
 
-    # No HyDE here, so this repo owns Kitty and Fastfetch. The HyDE theme is
-    # deliberately not installed — nothing would consume it.
+    # Kitty and Fastfetch are linked whether or not HyDE is present.
+    #
+    # They used to be skipped here, to leave the existing desktop untouched.
+    # That skip is what made them the last things still themed by HyDE, and
+    # removing HyDE would have taken the terminal's colours and the shell
+    # banner's logo with it. Owning them now is what makes that removal a
+    # non-event.
+    #
+    # Safe to take over: link_config moves whatever is there to
+    # <name>.pre-dotfiles first, so HyDE's own files are kept rather than
+    # overwritten, and neither program is session-specific -- the same terminal
+    # config serves both sessions while both exist.
     info "Configuring Kitty..."
 
     run "mkdir -p '$HOME/.config/kitty'"
