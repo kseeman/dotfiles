@@ -14,7 +14,6 @@ set -euo pipefail
 #   scripts, which stop existing once ~/.claude/hooks is unlinked. The rest of
 #   the merged settings stay: what they were before the merge cannot be told
 #   from here, and the installer's backups are left for restoring by hand.
-# - The HyDE themes and wallbash templates it installed are removed.
 # - The login session entry is removed, since a stale one fails a login.
 #
 # Packages, Oh My Zsh, Node versions and ~/.config/dotfiles are left alone and only
@@ -236,40 +235,6 @@ if [[ -f "$settings" && ! -L "$settings" ]]; then
     echo "Its permissions are left as merged. The installer's backups are"
     echo "~/.claude/settings.json.backup.*, if you want an earlier version back."
 fi
-
-# -----------------------------------------------------------------------------
-# HyDE themes and wallbash templates (Linux)
-# -----------------------------------------------------------------------------
-
-# Real directories and copied files, not links, so the scan above misses them.
-# A theme directory also holds wallpaper state HyDE wrote, which goes with it.
-for theme_path in "$DOTFILES_DIR"/os/linux/hyde-themes/*/; do
-    [[ -d "$theme_path" ]] || continue
-
-    name="$(basename "$theme_path")"
-    dest="$HOME/.config/hyde/themes/$name"
-
-    if [[ -d "$dest" ]]; then
-        info "Removing HyDE theme '$name'..."
-        run "rm -rf '$dest'"
-        echo "Switch HyDE to another theme if it was the active one."
-    fi
-done
-
-for template in "$DOTFILES_DIR"/os/linux/wallbash/*.dcol; do
-    [[ -f "$template" ]] || continue
-
-    dest="$HOME/.config/hyde/wallbash/always/$(basename "$template")"
-    [[ -f "$dest" ]] || continue
-
-    # Only an unmodified copy is certainly ours to delete.
-    if cmp -s "$template" "$dest"; then
-        info "Removing wallbash template $(basename "$template")..."
-        run "rm '$dest'"
-    else
-        echo "Left ${dest/#$HOME/$TILDE}: it differs from the repo's copy."
-    fi
-done
 
 # -----------------------------------------------------------------------------
 # The session entry (Linux)
