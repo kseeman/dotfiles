@@ -364,6 +364,66 @@ The last two rows are why `verify-config.sh` checks this **per file rather than 
 
 It checks both the exit status and the `config ok` line. The status is correct on 0.56.2; agreeing with both costs nothing against a release where either changes.
 
+#### The bar is vendored, not cloned
+
+`os/linux/desktop/quickshell/pill/` is a verbatim copy of [Ricelin](https://github.com/Gakuseei/Ricelin)'s
+Quickshell pill at commit `2109754024` (2026-09-26), MIT, with its `LICENSE`
+beside it and provenance in `VENDORED.md`.
+
+**Copied on purpose, rather than pinned as a submodule or a clone.** A pin makes
+local edits vanish the next time it moves, and the reason for taking this code
+is to change it. The cost is that upstream fixes have to be pulled across by
+hand; the cost of the alternative is losing work to a version bump, which is
+worse. Diffing against upstream means re-cloning at the recorded commit.
+
+It is one bar and also most of the desktop: media with now-playing, calendar,
+wallpaper picker, clipboard history, mixer, network, bluetooth, tray,
+**notifications**, launcher and power menu. That is why `config/startup.lua`
+starts so little else — waybar, a wallpaper setter and the wifi/bluetooth
+applets are all things the pill already is.
+
+**dunst needs no masking.** The pill claims `org.freedesktop.Notifications` at
+startup, only one process may own that name, so dunst is never D-Bus activated
+while the pill holds it. If the pill dies the next notification starts dunst,
+which is a fallback worth keeping rather than a conflict to suppress.
+
+#### Theming the pill is writing one file
+
+The pill reads every colour from `$XDG_CACHE_HOME/ricelin/colors.json` and
+watches it with `FileView`, so **a theme change is a write to that file and
+nothing restarts.** `quickshell/apply-palette.sh` generates it from
+`lib/palette.lua`, which is what keeps the compositor and the bar drawn from one
+source rather than two that drift. At P6 matugen writes the same file from the
+wallpaper and this script becomes the fallback path.
+
+The mapping is 17 Material You token names onto this repo's ramp: surfaces
+ascend `base → raised → overlay → muted`, the accent pair carries focus, and the
+text family stays neutral so it holds contrast on any of those surfaces.
+
+**Two files, and one without the other does nothing.** `paletteMode` in
+`$XDG_STATE_HOME/ricelin/flags.json` must not be `"static"`, or `Theme.qml`
+ignores `colors.json` entirely and renders Ricelin's curated vermilion identity.
+That file also holds the weather city, wallpaper directory and recording
+settings, all editable from the pill's own UI — so it is **merged with `jq`,
+never overwritten**, or applying a theme would reset all of it.
+
+A missing `colors.json` is not fatal: `Dyn.qml`'s `JsonAdapter` carries upstream's
+warm amber defaults, so the failure mode is the wrong colours rather than an
+unusable bar. The installer still writes it on every run, which is also how a
+`palette.lua` edit reaches the bar.
+
+**Test it without touching the live session:**
+
+```sh
+os/linux/desktop/nested.sh --exec "quickshell -p $PWD/os/linux/desktop/quickshell/pill"
+```
+
+Two upstream warnings are expected and neither is a fault: a `Binding` in
+`shell.qml` targets a `dnd` property `Notifs.qml` does not declare (do-not-disturb
+works anyway — `Notifs` reads `Flags.dnd` directly at the point of use), and the
+notification server fails to register inside a nested session because the real
+one outside already owns the name.
+
 ### Uninstalling
 
 `uninstall.sh` **finds** what to unlink rather than keeping a list: it scans
