@@ -691,13 +691,47 @@ Upstream's is ten kilobytes of shuffle bags, video wallpapers, per-output
 still-frame extraction, a matugen call and a terminal reload. This does the two
 things the picker needs.
 
-**It never stretches.** `awww`'s default `crop` fills the screen and discards
-the overflow while keeping the aspect ratio, so the distortion HyDE used to
-produce is not inherited. On the 5120x1440 ultrawide crop keeps the width and loses roughly
-60% of a 16:9 image's height — `DOTFILES_WALLPAPER_RESIZE=fit` shows the whole
-image instead, padded with the palette's darkest colour rather than black so the
-bands read as desktop. `DOTFILES_WALLPAPER_GRAVITY` picks which part survives a
-crop.
+**It never stretches**, and the aspect ratio is kept in every mode, so the
+distortion HyDE used to produce is not inherited.
+
+Three knobs in `lib/look.lua`, so a rice can set them and the bar's own picker
+gets them — an env var could not, since the picker spawns the script itself.
+`DOTFILES_WALLPAPER_{RESIZE,GRAVITY,FILL}` still override, for a one-off.
+
+| knob | default | |
+|---|---|---|
+| `wallpaper_fit` | `fit` | `fit`, `crop`, `stretch`, `no` |
+| `wallpaper_gravity` | `center` | which part survives a `crop` |
+| `wallpaper_fill` | `sampled` | what pads the rest |
+
+**`fit` rather than `awww`'s own `crop` default.** Crop fills the screen and
+discards the overflow, which on the 32:9 ultrawide costs a 16:9 image half its
+height — silently, so it reads as a stretch without being one. fit keeps the
+whole image and pads the rest, which fails visibly instead. The cost is real
+and worth stating: fit puts a 16:9 image in the middle 2560 of 5120 pixels.
+There is no mode that both fills the screen and keeps the whole picture; `crop`
+plus a gravity is the better trade for a collection that mostly matches the
+screen.
+
+**`wallpaper_fill` takes three forms:** `"sampled"` (the default) is the current
+image's own darkest surface, read straight from `palette-generated.lua` so the
+padding belongs to the picture and changes with it; a palette token such as
+`"root"` follows the active rice; a `"#RRGGBB"` literal pins it. That literal is
+the one place a colour may be written outside `lib/palette.lua` — padding is not
+part of the theme, and the common want, plain black behind a mostly-black image,
+is not a palette colour and should not become one.
+
+**`sampled` is why the palette is generated before `awww` runs rather than
+after.** Generating afterwards padded every wallpaper with the *previous* one's
+colour. Still whole-desktop only, so a per-output set pads from whichever image
+was last set across everything.
+
+**`awww` 0.12.1 ignores `--resize fit` when the image width exactly equals the
+output width.** Measured on this machine against 5120x1440: 5120x2880 and
+5120x2160 both crop, while 5000x2880, 5000x2812 and 6000x3375 all fit correctly
+— so it is width equality, not the scale factor or the aspect. It bites exactly
+the wallpapers cut for this screen's width, and there is no flag that works
+around it; the only fixes are a pre-rendered image or an upstream patch.
 
 **A recorded path that no longer exists is not an answer.** Both `resolve` and
 `current` check before returning one, which is what lets a renamed folder heal
