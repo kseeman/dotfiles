@@ -699,6 +699,15 @@ image instead, padded with the palette's darkest colour rather than black so the
 bands read as desktop. `DOTFILES_WALLPAPER_GRAVITY` picks which part survives a
 crop.
 
+**A recorded path that no longer exists is not an answer.** Both `resolve` and
+`current` check before returning one, which is what lets a renamed folder heal
+itself. Without it the directory state file pins the old name — and because
+`resolve` creates what it names, merely *reading* it puts the empty directory
+back. Renaming `wallpapers` to `Wallpapers` reproduced exactly that.
+
+The default is `$XDG_PICTURES_DIR/Wallpapers`, capitalised to match the
+directories `xdg-user-dirs` creates.
+
 The daemon is started on demand, so the first wallpaper of a session works
 whether or not anything else has run. The current wallpaper is recorded only
 after `awww` succeeds, and only for a whole-desktop change — a per-output set
