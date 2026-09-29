@@ -15,6 +15,10 @@ fastfetch
 bat
 ripgrep
 jq
+# Symmetric encryption for os/linux/desktop/archive.sh, which copies a snapshot
+# to removable storage. The archive holds secrets and shell history and the
+# stick has no permissions to protect them with.
+gnupg
 tree
 # Opened in a popup by tmux's prefix + g. Optional — that binding reports its
 # absence rather than failing — but listed so a fresh machine has it.

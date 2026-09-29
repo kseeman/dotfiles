@@ -360,6 +360,43 @@ Details that are load-bearing rather than incidental:
 - **A failing root is collected, not fatal.** Aborting on the first would leave the desktop half restored with no report of where it stopped, and `.config/gtk-4.0` sits twelve of thirty-one in.
 - **Packages are recorded, never reinstalled.** Reinstating a package set is a decision about the system, not about configuration.
 
+#### Getting a snapshot off the machine
+
+```sh
+os/linux/desktop/archive.sh put          # pack, encrypt, copy the latest
+os/linux/desktop/archive.sh get <name>   # bring one back
+```
+
+The local snapshots stay exactly as they are — fast, hardlinked, symlink-aware.
+This is a second, slower copy for the failure they cannot cover: **losing the
+machine** rather than a migration phase going wrong.
+
+**A tar, because the destination is vfat.** A removable stick is the only thing
+that survives losing the machine, and vfat holds no symlinks, no permission bits
+and no hardlinks. A snapshot is 763 symlinks and a `chmod 600` credentials file,
+so copying the tree there would silently destroy the things the archive is most
+careful about. Verified both survive a round trip.
+
+**Encrypted, because the archive holds `~/.config/dotfiles`** — secrets and four
+thousand lines of shell history — and vfat has no permissions to protect them
+with. On a stick that can be lost, that is the difference between a backup and a
+disclosure.
+
+**Symmetric with a passphrase, deliberately.** A key file on this machine would
+make the archive unreadable in the one situation it exists for. Keep the
+passphrase in a password manager; it is the only part that must outlive the
+disk.
+
+**It refuses a destination on the same filesystem as the snapshots**, rather
+than checking for a mount point. An unmounted stick leaves an ordinary empty
+directory behind, so the copy would succeed and look exactly like a backup while
+sitting on the disk it exists to survive. Comparing devices says something true;
+`mountpoint` would say something incidental.
+
+Split into 3G parts because vfat cannot hold a file larger than 4G, and the
+`.sha256` covers the *encrypted* stream, so it verifies what is on the stick
+rather than what was meant to be written.
+
 #### The session entry, and the `--` in it
 
 `os/linux/desktop/session/hyprland-dotfiles.desktop.in` installs a second login session running the Lua config, alongside whatever is already there. The config is passed with `--config` rather than by exporting `HYPRLAND_CONFIG`, which HyDE assigns unconditionally from its own uwsm env fragment — `--config` outranks the variable and needs no HyDE file edited. Removing the entry reverts to HyDE entirely.
