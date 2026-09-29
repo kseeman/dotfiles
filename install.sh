@@ -301,6 +301,59 @@ link_config \
     "$HOME/.zshrc"
 
 # -----------------------------------------------------------------------------
+# ZDOTDIR redirection
+# -----------------------------------------------------------------------------
+
+# zsh reads its startup files from $ZDOTDIR, and something else may own it.
+# HyDE's ~/.zshenv sets ZDOTDIR to ~/.config/zsh, so the ~/.zshrc linked above
+# is never read and every shell function this repo defines -- `dev` included --
+# silently does not exist. Nothing errors; the shell just comes up without them.
+#
+# The fix is one line appended to whichever zshrc zsh actually reads. That file
+# belongs to whatever redirected ZDOTDIR, so it is appended to rather than
+# replaced, and only once.
+link_redirected_zshrc() {
+    local target="$ZDOTDIR/.zshrc"
+    local marker="dotfiles/zsh/bootstrap.zsh"
+
+    # Nothing to do when zsh reads ~/.zshrc, which is the link made above.
+    [[ -n "${ZDOTDIR:-}" && "$ZDOTDIR" != "$HOME" ]] || return 0
+
+    [[ -f "$target" ]] || {
+        echo "ZDOTDIR is $ZDOTDIR but it has no .zshrc; leaving it alone."
+        return 0
+    }
+
+    if grep -qF "$marker" "$target" 2> /dev/null; then
+        echo "~/.zshrc is bypassed by ZDOTDIR, and the hook is already in place."
+        return 0
+    fi
+
+    info "Hooking this repo's zsh config into $ZDOTDIR/.zshrc..."
+
+    echo "    ZDOTDIR points at $ZDOTDIR, so ~/.zshrc is never read."
+
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "[dry-run] append the dotfiles hook to $target"
+        return 0
+    fi
+
+    cat >> "$target" << 'HOOK'
+
+# Added by dotfiles install.sh. Something on this machine redirects ZDOTDIR, so
+# ~/.zshrc is never read and this repo's shell configuration would not load.
+# Sourced last so it outranks what came before it.
+if [[ -r "$HOME/.dotfiles/zsh/bootstrap.zsh" ]]; then
+    source "$HOME/.dotfiles/zsh/bootstrap.zsh"
+fi
+HOOK
+
+    echo "    Open a new shell to pick it up."
+}
+
+link_redirected_zshrc
+
+# -----------------------------------------------------------------------------
 # Neovim configuration
 # -----------------------------------------------------------------------------
 

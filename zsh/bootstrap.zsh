@@ -39,8 +39,29 @@ plugins+=(
   zsh-syntax-highlighting
 )
 
-# Initialize Oh My Zsh
-source "$ZSH/oh-my-zsh.sh"
+# Oh My Zsh may already be running. When ZDOTDIR is redirected -- see
+# link_redirected_zshrc in install.sh -- this file is sourced from the end of
+# someone else's zshrc, and that zshrc has usually already loaded Oh My Zsh with
+# a plugin list of its own.
+#
+# ZSH_CACHE_DIR is what says so: Oh My Zsh sets it, and nothing else does.
+#
+# Sourcing oh-my-zsh.sh a second time would re-run compinit and rebuild the
+# completion dump on every shell, so the plugins it did not load are sourced
+# directly instead -- which is all its plugin loader does for these two.
+# zsh-syntax-highlighting must come last of everything that binds widgets, and
+# it does: nothing below here loads another plugin.
+if [[ -n "$ZSH_CACHE_DIR" ]]; then
+    for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+        plugin_script="$ZSH/custom/plugins/$plugin/$plugin.zsh"
+
+        [[ -r "$plugin_script" ]] && source "$plugin_script"
+    done
+
+    unset plugin plugin_script
+else
+    source "$ZSH/oh-my-zsh.sh"
+fi
 
 # -----------------------------------------------------------------------------
 # Shared user configuration
