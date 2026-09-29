@@ -328,11 +328,14 @@ link_config \
 # belongs to whatever redirected ZDOTDIR, so it is appended to rather than
 # replaced, and only once.
 link_redirected_zshrc() {
-    local target="$ZDOTDIR/.zshrc"
     local marker="dotfiles/zsh/bootstrap.zsh"
 
     # Nothing to do when zsh reads ~/.zshrc, which is the link made above.
+    # Checked before anything expands $ZDOTDIR: under set -u an unset one
+    # aborts the installer, and unset is the usual case.
     [[ -n "${ZDOTDIR:-}" && "$ZDOTDIR" != "$HOME" ]] || return 0
+
+    local target="$ZDOTDIR/.zshrc"
 
     [[ -f "$target" ]] || {
         echo "ZDOTDIR is $ZDOTDIR but it has no .zshrc; leaving it alone."
