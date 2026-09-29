@@ -775,8 +775,18 @@ desktop. matugen does emit a base16 set, so deriving them properly is possible
 later, but that is not the same as reading them off this ramp.
 
 A missing include is a warning kitty ignores, so macOS keeps `theme.conf` alone.
-Two include lines, for the same reason tmux needs two: `${VAR}` expands, but an
-unset one resolves to a path that does not exist rather than to a default.
+
+**One include line, unlike tmux's two — and that difference is not cosmetic.**
+kitty treats a file included twice as a configuration *error* and puts a dialog
+in front of every new terminal, so the trick tmux allows (name both the default
+and the XDG location, let the later win) is unavailable. It also cannot express
+`${VAR:-default}`, and `globinclude` rejects absolute paths.
+
+So the include names `$HOME`, and `render-theme.lua` writes kitty's file to
+exactly that path rather than to `$THEME_DIR` — the one output that does not
+follow `XDG_CACHE_HOME`, because the program reading it cannot be told how. On a
+machine that redirects that variable, kitty keeps `theme.conf` and logs a
+missing include, which is the safe direction.
 
 ### Uninstalling
 
