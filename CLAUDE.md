@@ -530,12 +530,53 @@ so `rice.sh` compares the start commands either side of the switch and says a
 re-login is needed. It asks the roles table rather than the rice, which is what
 keeps that right as providers change.
 
+**A rice may name a wallpaper**, in any of three forms, resolved by
+`lib/rice.lua`:
+
+| `wallpaper = …` | resolves to |
+|---|---|
+| `"wall.png"` | that file inside the rice's own directory |
+| `"~/Pictures/…"` | a machine-local path |
+| `"/absolute/…"` | as given |
+
+Shipping one keeps a look self-contained; naming a machine-local one keeps
+large or personal images out of a public repo, which is why neither rice here
+ships one. A rice that names none is not asking for the wallpaper to be
+cleared — it has no opinion, and whatever is up stays up.
+
 **A switch is machine-wide even from a worktree.** The state file and the
 rendered output live under XDG paths, one set per machine rather than per
 checkout, and the bar watches its colour file — so running `rice.sh` from a
 branch repaints the desktop you are sitting in. There is no isolated way to try
 it: the bar's colour path is fixed by the vendored code and cannot be
 redirected.
+
+#### The wallpaper setter
+
+`quickshell/scripts/wallpaper.sh` implements the contract the vendored
+`Walls.qml` expects — `resolve` records the folder, `set <path> [output]`
+applies it, and two `ricelin-wallpaper*` state files are read back. The names
+are theirs because the paths are fixed in code we did not write.
+
+Upstream's is ten kilobytes of shuffle bags, video wallpapers, per-output
+still-frame extraction, a matugen call and a terminal reload. This does the two
+things the picker needs.
+
+**It never stretches.** `awww`'s default `crop` fills the screen and discards
+the overflow while keeping the aspect ratio, so the distortion HyDE produced is
+not inherited. On the 5120x1440 ultrawide crop keeps the width and loses roughly
+60% of a 16:9 image's height — `DOTFILES_WALLPAPER_RESIZE=fit` shows the whole
+image instead, padded with the palette's darkest colour rather than black so the
+bands read as desktop. `DOTFILES_WALLPAPER_GRAVITY` picks which part survives a
+crop.
+
+The daemon is started on demand, so the first wallpaper of a session works
+whether or not anything else has run. The current wallpaper is recorded only
+after `awww` succeeds, and only for a whole-desktop change — a per-output set
+leaves no single current.
+
+**Not ported:** `wallpaper-search.sh` scrapes moewalls.com. The surface's search
+does nothing until that is a decision rather than something inherited.
 
 #### Generated configs
 
