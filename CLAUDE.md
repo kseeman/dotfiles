@@ -281,6 +281,41 @@ Consequences worth knowing:
 - HyDE writes `wall.set` and `wall.{swww,hyprlock,awww}.png` into the installed directory as wallpapers change. Because that directory is real rather than a symlink to the repo, this state never reaches the repo and **no `.gitignore` entries are needed**.
 - `get_themes()` self-heals a missing or dangling `wall.set` by relinking it to the first wallpaper it finds.
 
+### Desktop snapshots (Linux)
+
+`os/linux/desktop/` holds the tooling for replacing HyDE with a Lua-native Hyprland config. The desktop is changed in place, so every phase of that work has to be reversible against a measured baseline rather than a hope that things rebuild themselves.
+
+```sh
+os/linux/desktop/snapshot.sh p0-baseline   # capture
+os/linux/desktop/restore.sh --dry-run      # see what putting it back would change
+os/linux/desktop/restore.sh                # put it back (asks first)
+os/linux/desktop/verify-config.sh x.lua    # check a config before it reaches a login
+```
+
+Snapshots go to `~/.config-backups/<timestamp>[-label]`, **outside this repo** — the archive holds `~/.config/zsh/.zsh_history` and other application state, and this repo is public. The first is ~2.4GB, nearly all of it HyDE's 61 themes; later ones hardlink unchanged files against the previous snapshot via `--link-dest`, so one per phase costs almost nothing (measured: 2.4G then 232K).
+
+**The archive describes itself.** `PATHS` records the captured roots, `MANIFEST` the file checksums, `SYMLINKS` the link targets, `META` the provenance — including `~/HyDE`'s remote and commit, since recording where a clone came from beats copying it. `restore.sh` reads all of that rather than keeping a second copy of the path list, for the same reason `uninstall.sh` finds links instead of listing them: a second copy drifts, and drift here means a restore that quietly misses something.
+
+Three details are load-bearing:
+
+- **Symlinks are captured as symlinks, and verified apart from the manifest.** Hashing one would hash its target, which says nothing about the link. `~/.config/gtk-4.0` points into `~/.local/share/themes/`, and a wrong target there restores cleanly and breaks the desktop.
+- **Restore deletes files a snapshot does not contain**, scoped to one captured root at a time so nothing outside the snapshotted paths is ever touched. An addition is only undone if it goes away — and `hyprland.lua` outranks `hyprland.conf`, so a file left behind by an abandoned phase would keep control of the session.
+- **Packages are recorded, never reinstalled.** Reinstating a package set is a decision about the system, not about configuration.
+
+#### Verifying a config runs it
+
+`Hyprland --verify-config` parses without starting a session, which is what makes it usable as an install step and a pre-commit check. But a Lua config *is* a Lua program, and verifying it runs that program. Measured on 0.56.2:
+
+| | during `--verify-config` |
+|---|---|
+| `os.execute(...)` top level | runs |
+| `hl.exec_cmd(...)` top level | runs — launches the application |
+| inside `hl.on("hyprland.start", ...)` | does not run |
+
+So **every exec belongs inside `hl.on("hyprland.start", ...)`**, which is also how Hyprland's own example config is written. Otherwise verifying launches the autostart set — on every commit, for a hook. `verify-config.sh` warns about unindented execs as a reminder; it is a heuristic, not a parser, so it warns rather than fails.
+
+It checks both the exit status and the `config ok` line. The status is correct on 0.56.2; agreeing with both costs nothing against a release where either changes.
+
 ### Uninstalling
 
 `uninstall.sh` **finds** what to unlink rather than keeping a list: it scans
