@@ -211,6 +211,27 @@ The profile name is deliberately **not** validated in the script: `profile-manag
 
 **The layout only runs on creation.** Attaching to a session that already exists must never disturb it; that session *is* the workspace.
 
+#### Colours come from the desktop palette (Linux)
+
+`os/linux/desktop/tmux.conf.in` is rendered to
+`$XDG_CACHE_HOME/dotfiles/theme/tmux.conf` by `render-theme.lua` and sourced at
+the end of `tmux.conf`, so the status bar follows whichever rice is active.
+
+**Styles only.** Formats and layout stay in `tmux.conf`, which is what lets the
+bar be recoloured without touching its structure. That split is inherited from
+the wallbash template it replaces and is worth keeping.
+
+**Two source lines, because tmux cannot express one.** It expands `$VAR` in a
+path but not `${VAR:-default}`, and an unset variable with `-q` resolves to a
+path that silently does not exist. So the default location is tried first and
+the XDG one second, where it wins if that variable points elsewhere. When both
+name the same file it is sourced twice, which costs nothing — every line in it
+is a `set`.
+
+It is sourced *after* wallbash, so this wins wherever both exist. That is what
+decouples tmux from HyDE ahead of removing it; the wallbash line goes when HyDE
+does.
+
 #### Wallbash theming (Linux)
 
 `os/linux/wallbash/tmux.dcol` is a wallbash template that regenerates `~/.config/tmux/wallbash.conf` from the current wallpaper on every theme, wallpaper or mode change, then re-sources it into any running server via its header-line command. `tmux.conf` sources it with `-q`, so macOS and non-HyDE machines fall back to the plain terminal-palette styling.
@@ -634,12 +655,23 @@ parses CSS and the bar reads JSON — none can require Lua. Before it existed ea
 carried the palette typed out a second time, which works while there is one
 palette and silently keeps the old colours the moment there are two.
 
-**What it renders is not a fixed list.** It asks `lib/roles.lua` for the
+**What it renders is mostly not a fixed list.** It asks `lib/roles.lua` for the
 *active* providers and renders the templates they declare, so swapping a
 component stops its template being rendered with no edit to the renderer.
 
+A short `BASE` list covers consumers that are not swappable components. tmux is
+always tmux: there is no role for it to fill and no provider to declare it, and
+rendering it through one would mean inventing a component system for something
+with exactly one implementation.
+
+**Render output can be tested in isolation** by pointing `XDG_STATE_HOME` and
+`XDG_CACHE_HOME` elsewhere — that picks a different rice and writes the results
+somewhere harmless, leaving the live desktop alone. `rice.sh` cannot be isolated
+that way, because the bar's colour path is fixed inside the vendored code.
+
 | Template | Output |
 |---|---|
+| `tmux.conf.in` | `$THEME_DIR/tmux.conf` |
 | `hyprlock.conf.in` | `$THEME_DIR/hyprlock.conf` |
 | `wlogout/style.css.in` | `$THEME_DIR/wlogout.css` |
 | `quickshell/pill-colors.json.in` | `$XDG_CACHE_HOME/ricelin/colors.json` |
