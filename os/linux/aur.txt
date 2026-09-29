@@ -5,3 +5,4 @@
 # official repos. Prefer pacman.txt; only add here when a package genuinely
 # isn't in extra/core, since AUR builds are slower and less reliable.
 gpu-screen-recorder
+matugen
