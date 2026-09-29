@@ -60,12 +60,18 @@ map({ "n", "v" }, "<leader>fm", function()
   require("conform").format({ lsp_fallback = true, async = true })
 end, { desc = "Format buffer" })
 
--- Machine-local nvim code, outside the repo like ~/.userconfig/zsh/local.zsh,
+-- Machine-local nvim code, outside the repo like ~/.config/dotfiles/zsh/local.zsh,
 -- so it can neither be committed nor lost with the checkout. A plain script,
 -- run again by `:Reload local`: anything it defines must be safe to redefine
 -- (autocmds in an augroup with `clear = true`). Errors warn rather than being
 -- swallowed, since a silently skipped file just looks like a missing setting.
-local USER_LOCAL = vim.fn.expand("~/.userconfig/nvim/local.lua")
+--
+-- Built from XDG_CONFIG_HOME rather than stdpath("config"): that resolves to
+-- ~/.config/nvim, which is a symlink into this repo, and a machine-local file
+-- written there would land in a public checkout.
+local XDG_CONFIG = vim.env.XDG_CONFIG_HOME or vim.fn.expand("~/.config")
+
+local USER_LOCAL = XDG_CONFIG .. "/dotfiles/nvim/local.lua"
 
 local function load_user_local()
   if vim.fn.filereadable(USER_LOCAL) == 0 then

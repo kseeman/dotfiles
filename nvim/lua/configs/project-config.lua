@@ -1,8 +1,8 @@
 -- Per-project settings, kept outside this public repo like the tmux side's
--- ~/.userconfig/tmux/{profiles,layouts}. A project's file is named after its
+-- ~/.config/dotfiles/tmux/{profiles,layouts}. A project's file is named after its
 -- git root's directory and returns a table:
 --
---   -- ~/.userconfig/nvim/projects/<repo-dir-name>.lua
+--   -- ~/.config/dotfiles/nvim/projects/<repo-dir-name>.lua
 --   return {
 --     maven_test_args = { '-Dsome.property=none' },
 --   }
@@ -13,7 +13,9 @@
 -- restart.
 local M = {}
 
-local PROJECTS_DIR = vim.fn.expand('~/.userconfig/nvim/projects')
+local XDG_CONFIG = vim.env.XDG_CONFIG_HOME or vim.fn.expand('~/.config')
+
+local PROJECTS_DIR = XDG_CONFIG .. '/dotfiles/nvim/projects'
 
 function M.get(path)
   local root = vim.fs.root(path, '.git')

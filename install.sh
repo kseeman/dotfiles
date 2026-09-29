@@ -485,52 +485,75 @@ fi
 # User configuration reminder
 # -----------------------------------------------------------------------------
 
-info "Checking ~/.userconfig..."
+USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
 
-if [[ ! -d "$HOME/.userconfig" ]]; then
+info "Checking $(basename "$(dirname "$USER_CONFIG_DIR")")/dotfiles..."
+
+# This directory used to be ~/.userconfig, which was a bespoke dotdir rather
+# than an XDG path. Moved rather than left behind: it holds the only copy of
+# things that exist nowhere else -- tmux profiles and layouts, nvim per-project
+# settings, zsh secrets, hypr/local.lua with this machine's displays -- and an
+# installer that silently started reading a new empty directory would look like
+# every one of those settings had been forgotten at once.
+#
+# Only moved when the new location does not exist, so this never merges two
+# directories or overwrites a newer file with an older one.
+if [[ -d "$HOME/.userconfig" && ! -d "$USER_CONFIG_DIR" ]]; then
+    info "Moving ~/.userconfig to its XDG location..."
+
+    run "mkdir -p '$(dirname "$USER_CONFIG_DIR")'"
+    run "mv '$HOME/.userconfig' '$USER_CONFIG_DIR'"
+
+    echo "    ~/.userconfig -> $USER_CONFIG_DIR"
+elif [[ -d "$HOME/.userconfig" ]]; then
+    echo "~/.userconfig still exists but $USER_CONFIG_DIR does too."
+    echo "Merge them by hand; this installer will not choose between them."
+fi
+
+if [[ ! -d "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles" ]]; then
     if [[ "$DRY_RUN" == true ]]; then
-        echo "[dry-run] create ~/.userconfig structure"
+        echo "[dry-run] create ~/.config/dotfiles structure"
     else
-        mkdir -p "$HOME/.userconfig/zsh/extensions"
-        mkdir -p "$HOME/.userconfig/zsh/secrets"
+        mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/zsh/extensions"
+        mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/zsh/secrets"
 
-        cat > "$HOME/.userconfig/README.md" <<EOF
+        cat > "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/README.md" <<EOF
 # Local User Configuration
 
 This directory is intentionally not managed by dotfiles.
 
 Use:
 
-~/.userconfig/zsh/local.zsh
+~/.config/dotfiles/zsh/local.zsh
     Machine-specific configuration
 
-~/.userconfig/zsh/extensions/
+~/.config/dotfiles/zsh/extensions/
     Work/project shell extensions
 
-~/.userconfig/zsh/secrets/
+~/.config/dotfiles/zsh/secrets/
     Private environment variables and credentials
 
-~/.userconfig/nvim/local.lua
+~/.config/dotfiles/nvim/local.lua
     Machine-specific Neovim code: commands, keymaps, autocmds
 
-~/.userconfig/nvim/projects/<repo-dir-name>.lua
+~/.config/dotfiles/nvim/projects/<repo-dir-name>.lua
     Per-project Neovim settings (a returned table), e.g. maven_test_args
 
 Do not commit this directory.
 EOF
 
         echo ""
-        echo "Created ~/.userconfig structure."
+        echo "Created ~/.config/dotfiles structure."
         echo "Add private or machine-specific configuration there."
     fi
 else
-    echo "~/.userconfig already exists."
+    echo "~/.config/dotfiles already exists."
 fi
 
-# Outside the first-run block on purpose: machines whose ~/.userconfig predates
+# Outside the first-run block on purpose: machines whose ~/.config/dotfiles predates
 # the nvim files get the directory too. mkdir -p is a no-op when it exists and
 # never touches the files inside.
-run "mkdir -p '$HOME/.userconfig/nvim/projects'"
+run "mkdir -p '${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/nvim/projects'"
 
 # -----------------------------------------------------------------------------
 # Done
@@ -544,5 +567,5 @@ echo ""
 echo "Next steps:"
 echo "  1. Restart your terminal"
 echo "  2. Open Kitty for the full terminal experience"
-echo "  3. Add machine-specific settings to ~/.userconfig"
+echo "  3. Add machine-specific settings to ~/.config/dotfiles"
 echo ""

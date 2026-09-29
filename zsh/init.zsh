@@ -33,7 +33,7 @@ source "$DOTFILES_ZSH_DIR/prompt.zsh"
 # Machine-specific configuration
 # -----------------------------------------------------------------------------
 
-USERCONFIG_ZSH_DIR="$HOME/.userconfig/zsh"
+USERCONFIG_ZSH_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/zsh"
 
 [[ -r "$USERCONFIG_ZSH_DIR/local.zsh" ]] && \
     source "$USERCONFIG_ZSH_DIR/local.zsh"

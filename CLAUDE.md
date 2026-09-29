@@ -160,9 +160,9 @@ A newly created session gets an `editor` window with nvim started in it and a `s
 - **nvim is typed into the window's shell with `send-keys`, not run as the window's command.** As the window command, quitting nvim would close the window; this way it leaves a usable shell.
 - **The window is named with `-n`,** which turns `automatic-rename` off for it, so `editor` does not become `nvim` the moment the editor starts.
 
-Per-project layouts are one hook and no manifest format: an executable `~/.userconfig/tmux/layouts/<session-name>`, run with the session name, project directory and pinned profile after the session exists with its single `editor` window. It owns the layout from there. This mirrors `~/.userconfig/tmux/sessionizer-paths` — machine- and project-specific things live outside this public repo.
+Per-project layouts are one hook and no manifest format: an executable `~/.config/dotfiles/tmux/layouts/<session-name>`, run with the session name, project directory and pinned profile after the session exists with its single `editor` window. It owns the layout from there. This mirrors `~/.config/dotfiles/tmux/sessionizer-paths` — machine- and project-specific things live outside this public repo.
 
-A project pins which nvim profile its session opens with via a one-line `~/.userconfig/tmux/profiles/<session-name>` containing the profile name. Three things make this work the way it does:
+A project pins which nvim profile its session opens with via a one-line `~/.config/dotfiles/tmux/profiles/<session-name>` containing the profile name. Three things make this work the way it does:
 
 - It is delivered as `tmux new-session -e NVIM_PROFILE=…`, so it lands in the **session environment** and every pane inherits it. Prefixing the `nvim` command instead would only cover the `editor` window, and `nvim` typed in the shell window would get the wrong profile.
 - `NVIM_PROFILE` already outranks the persisted profile in `get_current_profile()`, so a pinned project beats whatever `:ProfileSwitch` last chose globally, with no change to the profile system.
@@ -299,7 +299,7 @@ Snapshots go to `$XDG_DATA_HOME/dotfiles/snapshots/<timestamp>[-label]`, **outsi
 
 Because the archive stores `$HOME`-relative paths, a base directory pointing **outside** `$HOME` is refused rather than silently skipped — a snapshot that looks complete and restores a partial desktop is the worse outcome. Restore never reinterprets the paths inside an archive: it replays `PATHS` as recorded, so an archive taken under one layout restores to that layout instead of being relocated into the current one.
 
-**`~/.userconfig` is the most irreplaceable thing captured.** It is where this repo keeps what it deliberately does not track — tmux profiles and layouts, nvim per-project settings, zsh secrets and extensions, and `hypr/local.lua` with this machine's monitor geometry and graphics settings. Everything else in the archive can be reinstalled or recloned; that directory exists in one place only. It contains secrets, which is not a reason to omit it: the archive already holds the shell history and lives outside this public repo.
+**`~/.config/dotfiles` is the most irreplaceable thing captured.** It is where this repo keeps what it deliberately does not track — tmux profiles and layouts, nvim per-project settings, zsh secrets and extensions, and `hypr/local.lua` with this machine's monitor geometry and graphics settings. Everything else in the archive can be reinstalled or recloned; that directory exists in one place only. It contains secrets, which is not a reason to omit it: the archive already holds the shell history and lives outside this public repo.
 
 **Configuration alone does not describe a desktop.** `~/.local/state/hyde/staterc` names the *active* theme, `~/.local/share/{waybar,rofi}` hold the layouts it points at, and `~/.local/share/themes` is the target of the captured `~/.config/gtk-4.0` symlink — without it that link restores dangling. `~/.local/state/hyde` is captured minus `python_env`/`pip_env`, which are 638MB of the 639MB and are package-manager build output. `~/.local/share/icons` (6.7GB) is left out as an installed asset nothing here modifies.
 
@@ -485,7 +485,7 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 
 ## Per-project settings
 
-`nvim/lua/configs/project-config.lua` reads `~/.userconfig/nvim/projects/<name>.lua`, where `<name>` is the directory name of the project's git root, and the file returns a table. It mirrors `~/.userconfig/tmux/{profiles,layouts}`: project specifics stay out of this public repo, one file per project.
+`nvim/lua/configs/project-config.lua` reads `~/.config/dotfiles/nvim/projects/<name>.lua`, where `<name>` is the directory name of the project's git root, and the file returns a table. It mirrors `~/.config/dotfiles/tmux/{profiles,layouts}`: project specifics stay out of this public repo, one file per project.
 
 - **Looked up from the path being worked on, not the cwd**, the same reason jdtls starts per buffer: one nvim can span several projects, and a setting must not leak from one into another. This is what a module-level variable set from `local-commands.lua` got wrong.
 - **Read on every call, never cached.** Callers only use it when a command runs, so edits apply without a restart.
@@ -494,9 +494,19 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 
 Current keys: `maven_test_args` (test runner).
 
+## Machine-local configuration
+
+`~/.config/dotfiles/` (`$XDG_CONFIG_HOME/dotfiles`) holds everything machine-specific that this repo deliberately does not track: `zsh/{local.zsh,secrets,extensions}`, `nvim/{local.lua,projects}`, `tmux/{profiles,layouts,sessionizer-paths}`, `hypr/local.lua`.
+
+**It is not `~/.config/<tool>/`, and that is the whole point.** `~/.config/nvim` and `~/.config/tmux` are symlinks *into this repo* — writing a machine-local file there writes it into a public checkout. That is the failure the nvim section below describes, and the reason a separate directory exists at all. The separation is load-bearing; only the name is a choice.
+
+It was `~/.userconfig` until it moved here, for consistency with the XDG resolution the desktop tooling does. `install.sh` moves an existing `~/.userconfig` across on the next run, and refuses to choose if both exist.
+
+Nothing here is tracked, so it exists in exactly one place per machine — which is why `os/linux/desktop/snapshot.sh` captures it.
+
 ## Machine-local Neovim code
 
-`~/.userconfig/nvim/local.lua` holds machine-specific nvim code — commands, keymaps, autocmds — the way `~/.userconfig/zsh/local.zsh` does for the shell. `mappings.lua` runs it with `dofile` at the end of startup, and `:Reload local` runs it again, so whatever it defines must be safe to redefine (autocmds in an augroup with `clear = true`). A file that errors warns instead of being skipped silently.
+`~/.config/dotfiles/nvim/local.lua` holds machine-specific nvim code — commands, keymaps, autocmds — the way `~/.config/dotfiles/zsh/local.zsh` does for the shell. `mappings.lua` runs it with `dofile` at the end of startup, and `:Reload local` runs it again, so whatever it defines must be safe to redefine (autocmds in an augroup with `clear = true`). A file that errors warns instead of being skipped silently.
 
 It replaced a git-ignored `nvim/lua/local-commands.lua` inside the checkout, which could be committed by a `.gitignore` edit and was lost with the checkout. The ignore entry stays, as a guard for stale copies on machines that still have one. Settings consumed by tracked code belong in the per-project files above, not here; code scoped to one project checks the git root itself.
 
@@ -620,7 +630,7 @@ Consequences:
 ## Git Ignore Patterns
 
 Important git-ignored files:
-- `nvim/lua/local-commands.lua` - No longer loaded (superseded by `~/.userconfig/nvim/local.lua`); still ignored so a stale copy cannot be committed
+- `nvim/lua/local-commands.lua` - No longer loaded (superseded by `~/.config/dotfiles/nvim/local.lua`); still ignored so a stale copy cannot be committed
 
 ## Mason Package Dependencies
 

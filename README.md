@@ -38,7 +38,7 @@ before the install return. It also removes this repo's hooks from
 installed.
 
 Left in place, and listed at the end: Homebrew or pacman packages, Oh My Zsh
-(`uninstall_oh_my_zsh` removes it), Node versions, `~/.userconfig`, and the
+(`uninstall_oh_my_zsh` removes it), Node versions, `~/.config/dotfiles`, and the
 checkout itself. `--remove-tools` also deletes the Neovim Python environment,
 netcoredbg, and tmux plugins the installer downloaded.
 
@@ -92,7 +92,7 @@ no HyDE themes.
 ## What the installer does on Linux
 
 The same shared steps as macOS (Oh My Zsh, nvm, Neovim, tmux, Claude Code
-unless `--no-claude`, `~/.userconfig`), plus:
+unless `--no-claude`, `~/.config/dotfiles`), plus:
 
 - Packages from `os/linux/pacman.txt` (`pacman -S --needed`) and
   `os/linux/aur.txt` (via `paru` or `yay`). This includes a **Hyprland desktop**
@@ -215,18 +215,18 @@ Changing a permission or hook means editing `claude/settings.json` and re-runnin
 
 ## Machine-specific configuration
 
-`~/.userconfig` is never tracked here. It holds everything local to a machine
+`~/.config/dotfiles` is never tracked here. It holds everything local to a machine
 or a project, so it is the one directory to back up:
 
 ```
-~/.userconfig/zsh/local.zsh            Machine-specific shell settings
-~/.userconfig/zsh/extensions/          Work/project shell extensions
-~/.userconfig/zsh/secrets/             Private environment variables
-~/.userconfig/tmux/sessionizer-paths   Extra project roots for the sessionizer
-~/.userconfig/tmux/profiles/<session>  nvim profile a project's session opens with
-~/.userconfig/tmux/layouts/<session>   Per-project window layout script
-~/.userconfig/nvim/local.lua           Machine-specific Neovim code
-~/.userconfig/nvim/projects/<repo>.lua Per-project Neovim settings
+~/.config/dotfiles/zsh/local.zsh            Machine-specific shell settings
+~/.config/dotfiles/zsh/extensions/          Work/project shell extensions
+~/.config/dotfiles/zsh/secrets/             Private environment variables
+~/.config/dotfiles/tmux/sessionizer-paths   Extra project roots for the sessionizer
+~/.config/dotfiles/tmux/profiles/<session>  nvim profile a project's session opens with
+~/.config/dotfiles/tmux/layouts/<session>   Per-project window layout script
+~/.config/dotfiles/nvim/local.lua           Machine-specific Neovim code
+~/.config/dotfiles/nvim/projects/<repo>.lua Per-project Neovim settings
 ```
 
 It contains secrets, so keep backups encrypted and never publish it.

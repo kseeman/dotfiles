@@ -21,7 +21,7 @@
 #
 # A project pins its nvim profile with a one-line file named after the session:
 #
-#   echo java > ~/.userconfig/tmux/profiles/acme-api
+#   echo java > ~/.config/dotfiles/tmux/profiles/acme-api
 #
 # That becomes NVIM_PROFILE in the session environment, which outranks the
 # profile persisted by :ProfileSwitch. It is applied when the session is
@@ -51,9 +51,9 @@ SEARCH_PATHS=(
 )
 
 # Machine-specific roots belong here rather than in the list above: one path per
-# line, blank lines and # comments ignored, ~ expanded. ~/.userconfig is not
+# line, blank lines and # comments ignored, ~ expanded. ~/.config/dotfiles is not
 # tracked by this repo, which is where anything machine-specific lives.
-USER_PATHS_FILE="$HOME/.userconfig/tmux/sessionizer-paths"
+USER_PATHS_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/tmux/sessionizer-paths"
 
 if [[ -r "$USER_PATHS_FILE" ]]; then
     while IFS= read -r line; do
@@ -126,12 +126,12 @@ find_projects() {
 # A project can pin which nvim profile its session opens with: one line naming
 # the profile, in a file named after the session.
 #
-#   echo java > ~/.userconfig/tmux/profiles/acme-api
+#   echo java > ~/.config/dotfiles/tmux/profiles/acme-api
 #
 # The name is not validated here on purpose. profile-manager.lua already warns
 # and falls back to "default" for an unknown one, and checking here would mean a
 # second copy of the profile list that has to be kept in step with nvim's.
-PROFILES_DIR="$HOME/.userconfig/tmux/profiles"
+PROFILES_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/tmux/profiles"
 
 profile_for() {
     local file="$PROFILES_DIR/$1" profile
@@ -295,14 +295,14 @@ pick_project() {
 # -----------------------------------------------------------------------------
 
 # A new session gets a default two-window layout. Per-project layouts belong in
-# ~/.userconfig/tmux/layouts/<session-name> — an executable script, run with the
+# ~/.config/dotfiles/tmux/layouts/<session-name> — an executable script, run with the
 # session name and the project directory as its two arguments, after the session
 # has been created with a single `editor` window. It owns the layout from there.
 #
 # That one hook is the whole extension mechanism: a project that wants an `api`
 # window running a server adds a script, and everything else keeps the default.
 # There is deliberately no manifest format to learn.
-LAYOUTS_DIR="$HOME/.userconfig/tmux/layouts"
+LAYOUTS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/tmux/layouts"
 
 # nvim is typed into the editor window's shell rather than run as the window's
 # command, so quitting it leaves a usable shell behind instead of closing the

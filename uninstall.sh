@@ -16,7 +16,7 @@ set -euo pipefail
 #   from here, and the installer's backups are left for restoring by hand.
 # - The HyDE themes and wallbash templates it installed are removed.
 #
-# Packages, Oh My Zsh, Node versions and ~/.userconfig are left alone and only
+# Packages, Oh My Zsh, Node versions and ~/.config/dotfiles are left alone and only
 # reported: they may have been there before, or be in use since. The tool
 # directories the installer creates go only with --remove-tools.
 #
@@ -341,7 +341,7 @@ esac
 
 echo "  Oh My Zsh           run uninstall_oh_my_zsh to remove it"
 echo "  Node versions       ~/.nvm"
-echo "  Your own config     ~/.userconfig"
+echo "  Your own config     ~/.config/dotfiles"
 echo ""
 echo "This checkout itself is untouched. Open a new terminal to pick up the"
 echo "restored shell configuration."
