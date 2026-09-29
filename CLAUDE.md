@@ -320,7 +320,9 @@ Details that are load-bearing rather than incidental:
 
 `os/linux/desktop/session/hyprland-dotfiles.desktop.in` installs a second login session running the Lua config, alongside whatever is already there. The config is passed with `--config` rather than by exporting `HYPRLAND_CONFIG`, which HyDE assigns unconditionally from its own uwsm env fragment — `--config` outranks the variable and needs no HyDE file edited. Removing the entry reverts to HyDE entirely.
 
-**The `--` before the compositor is load-bearing.** uwsm parses its command line with argparse, takes the compositor as a plain positional, and never calls `parse_known_args`, so a trailing `--config <path>` is read as an option to *uwsm* and rejected:
+The compositor is launched through **`start-hyprland`**, not the `Hyprland` binary. That wrapper supervises the compositor with a watchdog, and running the binary directly prints *"Hyprland is being launched without start-hyprland. This is highly advised against."* at every login. Naming it first does mean uwsm takes it as the compositor id, so the generated units are `wayland-wm@start-hyprland.service` rather than `@Hyprland` — cosmetic here, since nothing references those names and `-D Hyprland` still sets `XDG_CURRENT_DESKTOP`, which is what the env files key off.
+
+**There are two `--` in that Exec and they do different jobs.** The second tells `start-hyprland` which arguments to pass on to Hyprland. The first is load-bearing for a different reason: uwsm parses its command line with argparse, takes the compositor as a plain positional, and never calls `parse_known_args`, so a trailing option is read as one of *uwsm's* and rejected:
 
 ```
 uwsm: error: unrecognized arguments: --config /home/…/init.lua
