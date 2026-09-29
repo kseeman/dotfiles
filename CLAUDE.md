@@ -65,6 +65,7 @@ os/macos/              Brewfile, install.sh, zsh/{exports,aliases}.zsh
 os/linux/              pacman.txt, aur.txt, install.sh, zsh/{exports,aliases}.zsh
 os/linux/hypr/         User-tier Hyprland config (see below)
 os/linux/hyde-themes/  Hand-authored HyDE themes, one dir each (see below)
+os/linux/desktop/      Snapshot/restore and config verification (see below)
 ```
 
 ### Detection
@@ -292,14 +293,21 @@ os/linux/desktop/restore.sh                # put it back (asks first)
 os/linux/desktop/verify-config.sh x.lua    # check a config before it reaches a login
 ```
 
-Snapshots go to `~/.config-backups/<timestamp>[-label]`, **outside this repo** — the archive holds `~/.config/zsh/.zsh_history` and other application state, and this repo is public. The first is ~2.4GB, nearly all of it HyDE's 61 themes; later ones hardlink unchanged files against the previous snapshot via `--link-dest`, so one per phase costs almost nothing (measured: 2.4G then 232K).
+Snapshots go to `~/.config-backups/<timestamp>[-label]`, **outside this repo** — the archive holds `~/.config/zsh/.zsh_history` and other application state, and this repo is public. The first is ~2.6GB, mostly HyDE's 61 themes; later ones hardlink unchanged files against the previous snapshot via `--link-dest`, so one per phase costs almost nothing (measured: 2.4G then 232K).
+
+**Configuration alone does not describe a desktop.** `~/.local/state/hyde/staterc` names the *active* theme, `~/.local/share/{waybar,rofi}` hold the layouts it points at, and `~/.local/share/themes` is the target of the captured `~/.config/gtk-4.0` symlink — without it that link restores dangling. `~/.local/state/hyde` is captured minus `python_env`/`pip_env`, which are 638MB of the 639MB and are package-manager build output. `~/.local/share/icons` (6.7GB) is left out as an installed asset nothing here modifies.
 
 **The archive describes itself.** `PATHS` records the captured roots, `MANIFEST` the file checksums, `SYMLINKS` the link targets, `META` the provenance — including `~/HyDE`'s remote and commit, since recording where a clone came from beats copying it. `restore.sh` reads all of that rather than keeping a second copy of the path list, for the same reason `uninstall.sh` finds links instead of listing them: a second copy drifts, and drift here means a restore that quietly misses something.
 
-Three details are load-bearing:
+**MANIFEST is written last, and that is what marks a snapshot complete.** Both scripts pick "the latest" by looking for it, so an interrupted snapshot is never hardlinked against and never shadows the good one next to it.
 
-- **Symlinks are captured as symlinks, and verified apart from the manifest.** Hashing one would hash its target, which says nothing about the link. `~/.config/gtk-4.0` points into `~/.local/share/themes/`, and a wrong target there restores cleanly and breaks the desktop.
-- **Restore deletes files a snapshot does not contain**, scoped to one captured root at a time so nothing outside the snapshotted paths is ever touched. An addition is only undone if it goes away — and `hyprland.lua` outranks `hyprland.conf`, so a file left behind by an abandoned phase would keep control of the session.
+Details that are load-bearing rather than incidental:
+
+- **Symlinks are captured as symlinks, and verified apart from the manifest.** Hashing one would hash its target, which says nothing about the link. `~/.config/gtk-4.0` points into `~/.local/share/themes/`, and a wrong target there restores cleanly and breaks the desktop. Both sides of that comparison are re-sorted under `LC_ALL=C`: bare `sort` follows the locale, so an archive written under a UTF-8 login and checked from a rescue shell would be declared corrupt — exactly when the tool is needed.
+- **Restore deletes files a snapshot does not contain**, scoped to one captured root at a time. An addition is only undone if it goes away — and `hyprland.lua` outranks `hyprland.conf`, so a file left behind by an abandoned phase would keep control of the session.
+- **A destination whose type does not match is cleared first**, both ways round. A symlinked destination directory is the HyDE write-through hazard again: `rsync --delete` resolves the link and empties whatever it points at, outside the target entirely. A directory where a symlink belongs is the mirror image — rsync cannot make way for it, fails with status 23, and would take the rest of the restore with it.
+- **PATHS is treated as input, not trusted.** It is plain text inside the archive and is not covered by MANIFEST, so a root that is `.`, absolute, or contains `..` is refused. Scoping deletes to a root only means something if the root cannot climb out of it.
+- **A failing root is collected, not fatal.** Aborting on the first would leave the desktop half restored with no report of where it stopped, and `.config/gtk-4.0` sits twelve of thirty-one in.
 - **Packages are recorded, never reinstalled.** Reinstating a package set is a decision about the system, not about configuration.
 
 #### Verifying a config runs it
