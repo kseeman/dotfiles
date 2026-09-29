@@ -63,6 +63,10 @@ ttf-cascadia-code-nerd
 
 # Session core
 hyprland
+# The bar, launcher and notification surfaces are a Quickshell shell rather
+# than waybar: the media popup the design calls for -- album art with a
+# draggable scrubber -- is not something waybar can be configured into.
+quickshell
 hyprlock
 hypridle
 waybar
