@@ -103,7 +103,6 @@ nvim/                  Shared; already cross-platform via profile-manager.lua
 os/macos/              Brewfile, install.sh, zsh/{exports,aliases}.zsh
 os/linux/              pacman.txt, aur.txt, install.sh, zsh/{exports,aliases}.zsh
 os/linux/hypr/         User-tier Hyprland config (see below)
-os/linux/hyde-themes/  Hand-authored HyDE themes, one dir each (see below)
 os/linux/desktop/      Snapshot/restore and config verification (see below)
 ```
 
@@ -134,9 +133,8 @@ Deliberately split: Node versions live in `$NVM_DIR` (`~/.nvm`) on both platform
 
 `install.sh` links what is universally shared (`~/.dotfiles`, `~/.zshrc`, `~/.config/nvim` — `nvim/` is already cross-platform via `profile-manager.lua`). Each OS installer may define an `os_link_configs()` hook, called after the `~/.dotfiles` symlink exists, for everything else.
 
-**Kitty and Fastfetch are linked everywhere, including alongside HyDE.** They
-used to be skipped on Linux while HyDE was present, to leave the existing
-desktop untouched — and that skip is exactly what made them the last two things
+**Kitty and Fastfetch are linked everywhere.** They used to be skipped on Linux
+while HyDE was present, to leave the existing desktop untouched — and that skip is exactly what made them the last two things
 still themed by HyDE, so removing it would have taken the terminal's colours and
 the shell banner's logo with it. Owning them is what makes that removal a
 non-event.
@@ -144,8 +142,8 @@ non-event.
 Taking them over is safe because `link_config` moves whatever is there to
 `<name>.pre-dotfiles` first, so HyDE's generated files are kept rather than
 overwritten, and neither program is session-specific: one terminal config serves
-both sessions while both exist. HyDE's leftover `~/.config/kitty/hyde.conf` is
-simply never included by ours.
+both sessions while both existed. HyDE's leftover `hyde.conf` was simply never
+included by ours, and went with the rest of it.
 
 The two configs differ from HyDE's in one visible way: its Fastfetch logo came
 from a theme-aware `fastfetch.sh logo` call reading images out of
@@ -161,7 +159,7 @@ This inverts the usual pattern: rather than the OS file loading first, tmux sour
 
 The prefix is deliberately left at the default `C-b` — the config is written for someone learning tmux, where matching every tutorial and working unchanged over SSH matters more than ergonomics.
 
-Two settings are load-bearing for Neovim and should not be removed: `escape-time 10` (the 500ms default makes `Esc` feel broken in nvim) and `focus-events on` (nvim's autoread). Colors are left to the terminal palette rather than hardcoded, so the status bar follows whatever HyDE theme is active.
+Two settings are load-bearing for Neovim and should not be removed: `escape-time 10` (the 500ms default makes `Esc` feel broken in nvim) and `focus-events on` (nvim's autoread). Colors are left to the terminal palette rather than hardcoded, so the status bar follows whatever rice is active.
 
 In-tmux help replaces two defaults: `prefix + ?` opens `tmux/cheatsheet.txt` in a `display-popup`, and `prefix + /` pipes `list-keys -N` into fzf. `list-keys -N` shows **only bindings with a note**, so every custom `bind` carries `-N "…"` — a binding added without one is silently missing from the search. The cheatsheet is hand-written and read from `~/.dotfiles` at runtime, so it needs no linking, but it must be updated by hand when a binding changes.
 
@@ -204,7 +202,7 @@ Picker details worth knowing before editing it:
 - Lines are `<display><TAB><path>`; fzf shows and searches field 1 via `--with-nth` and passes field 2 to the preview and kill bindings, so **the path is never parsed back out of the display text**. The parent directory is shown because a basename alone is ambiguous once several roots are configured — `~/repos/personal/dotfiles` and `~/Repos/dotfiles` are two projects with one name.
 - `● / ○` mark whether a project already has a session, and live ones sort first. Deliberately glyphs rather than colours, so the list follows the terminal palette like everything else here.
 - **The `<55(…)` threshold in `--preview-window` is the width of the *preview window*, not the terminal.** It moves the preview above the list in a narrow pane; written as a terminal width it fires far too early (`<100` triggers at 130 columns, because the preview would be 71).
-- `bat` renders the README with `--theme=ansi`. Its default theme is hardcoded truecolor and would ignore the active tokyonight/HyDE palette.
+- `bat` renders the README with `--theme=ansi`. Its default theme is hardcoded truecolor and would ignore the active tokyonight/rice palette.
 - `ctrl-/` is bound twice (`ctrl-/` and `ctrl-_`) because terminals disagree about what that key sends.
 
 One bash gotcha the script comments but is easy to reintroduce: `${path/#$HOME/\~}` keeps the **backslash** in the result, because the replacement half of `${var/pat/repl}` is not re-parsed. The tilde goes through a `TILDE` variable instead.
@@ -243,17 +241,9 @@ the XDG one second, where it wins if that variable points elsewhere. When both
 name the same file it is sourced twice, which costs nothing — every line in it
 is a `set`.
 
-It is sourced *after* wallbash, so this wins wherever both exist. That is what
-decouples tmux from HyDE ahead of removing it; the wallbash line goes when HyDE
-does.
-
-#### Wallbash theming (Linux)
-
-`os/linux/wallbash/tmux.dcol` is a wallbash template that regenerates `~/.config/tmux/wallbash.conf` from the current wallpaper on every theme, wallpaper or mode change, then re-sources it into any running server via its header-line command. `tmux.conf` sources it with `-q`, so macOS and non-HyDE machines fall back to the plain terminal-palette styling.
-
-It is **copied**, not symlinked, into `~/.config/hyde/wallbash/always/` by `install_wallbash_templates()`. Wallbash finds templates with `find -H … -type f`, which does not follow symlinks — the same constraint as theme wallpapers. Re-run the installer after editing the template.
-
-The template sets styles only; `tmux.conf` owns formats and layout. Keeping that split is what lets colors be regenerated without touching the bar's structure.
+It replaced a wallbash template HyDE regenerated. That template was sourced with
+`-q`, so removing HyDE would have taken the colours away *silently* — which is
+why tmux was decoupled before the removal rather than during it.
 
 ### Claude Code harness
 
@@ -323,43 +313,22 @@ See `claude/README.md` for the agent/skill/hook reference and how to add more.
 
 `os/linux/hypr/` holds the user-tier Hyprland files, linked into `~/.config/hypr/` by `install_hypr_configs()` — the list is the `HYPR_USER_CONFIGS` array: `userprefs.conf`, `keybindings.conf`, `windowrules.conf`.
 
-These are safe to own because HyDE seeds but never rewrites them; its generated output goes to `~/.config/hypr/themes/` instead. Linking is HyDE-independent — it happens whether or not HyDE is installed.
+These were safe to own because HyDE seeded but never rewrote them; its generated output went to `~/.config/hypr/themes/` instead. Linking was always HyDE-independent.
 
 **Deliberately excluded, and they must stay that way:** `monitors.conf` and `workspaces.conf` are both generated by nwg-displays and both name physical outputs (`monitor:DP-1`, `monitor:DP-2`), and `nvidia.conf` is hardware-specific. They describe *this* machine and would be wrong on any other. The nwg-displays pair is also regenerated whenever displays are rearranged, so tracking them means fighting that tool. Any file carrying a "Generated by … Do not edit manually" header belongs in this list, not in `HYPR_USER_CONFIGS`.
 
 Remember the precedence rule when editing `userprefs.conf`: `hyprland.conf` sources it *last*, so it outranks the active theme. Keep structure and behaviour there and leave colors/gaps/rounding/blur to the theme, or theme switching will look half-applied.
 
-**Hazard — HyDE updates can write through these symlinks.** HyDE's `restore.config.sh` deploys with `cp -r`/`cp -rf`, and a plain copy onto a symlink writes through to the target rather than replacing the link. A HyDE update can therefore overwrite the tracked files *inside this repo* while the symlinks still look correct. Installing HyDE before the dotfiles avoids it; otherwise check `git status os/linux/hypr` after any HyDE update and `git checkout --` to restore. This is the main reason these files are worth tracking in git at all.
-
-### HyDE themes (Linux)
-
-`os/linux/hyde-themes/` holds hand-authored HyDE themes, one directory each. `install_hyde_themes()` in `os/linux/install.sh` loops over them and installs each to `~/.config/hyde/themes/<name>`.
-
-**The directory name is the theme name** — that's how HyDE identifies a theme, so no name is hardcoded anywhere. Adding a theme means adding a directory; renaming is a `git mv` plus deleting the stale `~/.config/hyde/themes/<old-name>` by hand, since the installer only adds.
-
-Which files get symlinked is controlled by the `HYDE_THEME_LINKABLE` array; extend it if a theme needs a file type not yet listed. An optional `.sort` file (first line, a number, default `0`) orders the theme in the switcher — shipped themes use `1`–`12` and the sort is ascending, so custom themes appear first by default; a negative value pins one to the top.
-
-Unlike Kitty/Fastfetch, this is **additive** — a directory HyDE doesn't own and never overwrites — so it installs whenever HyDE is present, regardless of the desktop-config skip. Without HyDE it isn't installed at all, since nothing would consume it.
-
-**The symlink/copy split is forced by HyDE, not a style choice.** Discovery uses `find -H`, which does not follow symlinks encountered during traversal, so a symlink is `-type l` — never `-type d` or `-type f`:
-
-| Path | Must be | Mechanism |
-|------|---------|-----------|
-| `themes/<name>/` | real directory | `get_themes()` uses `find -H … -maxdepth 1 -type d` |
-| `wallpapers/` + images | real directory, **copied** files | `get_hashmap()` uses `find -H … -type f` |
-| `*.theme`, `kvantum/` | may be symlinks | read by path (`-r`), which follows symlinks |
-
-Get this wrong and there is no error — the theme simply never appears in the switcher. A theme with **no wallpaper at all is skipped entirely** by `get_themes()`, which is why one image is committed.
-
-Consequences worth knowing:
-
-- Editing a `.theme` file in the repo edits the live theme. Adding a wallpaper requires re-running the installer to copy it.
-- HyDE writes `wall.set` and `wall.{swww,hyprlock,awww}.png` into the installed directory as wallpapers change. Because that directory is real rather than a symlink to the repo, this state never reaches the repo and **no `.gitignore` entries are needed**.
-- `get_themes()` self-heals a missing or dangling `wall.set` by relinking it to the first wallpaper it finds.
+**Nothing reads these any more.** They are HyDE's user-tier files, and with
+HyDE removed the session that sourced them is gone — the Lua config does not.
+They are kept because reinstalling HyDE would want them and because they record
+bindings worth consulting, but they are inert. The hazard that used to live here
+— HyDE deploying with `cp -rf` and writing *through* the symlinks into this
+repo — went with it.
 
 ### Desktop snapshots (Linux)
 
-`os/linux/desktop/` holds the tooling for replacing HyDE with a Lua-native Hyprland config. The desktop is changed in place, so every phase of that work has to be reversible against a measured baseline rather than a hope that things rebuild themselves.
+`os/linux/desktop/` holds the Lua-native Hyprland desktop that replaced HyDE, and the snapshot tooling that made replacing it reversible. The desktop is changed in place, so every phase of that work has to be reversible against a measured baseline rather than a hope that things rebuild themselves.
 
 ```sh
 os/linux/desktop/snapshot.sh p0-baseline   # capture
@@ -368,7 +337,7 @@ os/linux/desktop/restore.sh                # put it back (asks first)
 os/linux/desktop/verify-config.sh x.lua    # check a config before it reaches a login
 ```
 
-Snapshots go to `$XDG_DATA_HOME/dotfiles/snapshots/<timestamp>[-label]`, **outside this repo** — the archive holds the shell history and other application state, and this repo is public. Data rather than state: XDG reserves state for things "not important or portable enough" to be data, and losing this one would matter. `DOTFILES_SNAPSHOT_DIR` overrides it. The first is ~2.6GB, mostly HyDE's 61 themes; later ones hardlink unchanged files against the previous snapshot via `--link-dest`, so one per phase costs almost nothing (measured: 2.4G then 232K).
+Snapshots go to `$XDG_DATA_HOME/dotfiles/snapshots/<timestamp>[-label]`, **outside this repo** — the archive holds the shell history and other application state, and this repo is public. Data rather than state: XDG reserves state for things "not important or portable enough" to be data, and losing this one would matter. `DOTFILES_SNAPSHOT_DIR` overrides it. The first was ~2.6GB, mostly HyDE's 61 themes; later ones hardlink unchanged files against the previous snapshot via `--link-dest`, so one costs almost nothing (measured: 2.4G, then 232K, and 825KB written for the one taken just before HyDE was removed).
 
 **These scripts resolve the XDG base directories rather than assuming them**, and anything added here should keep doing so — including the Lua config, which belongs under `$XDG_CONFIG_HOME/hypr`. This machine has all four variables set to their defaults, so hardcoding `~/.config` would work by coincidence, and coincidence is exactly how `dev` broke: it assumed `~/.zshrc` while `ZDOTDIR` pointed at `~/.config/zsh`. `~/.local/lib` and the legacy `~/.gtkrc-2.0`/`~/.zshenv`/`~/.zshrc` stay `$HOME`-relative because no XDG variable covers them.
 
@@ -411,13 +380,12 @@ successfully — choose this session once and every later login lands on it. The
 is no sddm key for "preselect without autologin": `[Autologin] Session=` turns
 autologin *on*, and the last-session value lives in `/var/lib/sddm/state.conf`,
 which sddm owns and rewrites at every login. Pre-seeding that would be
-overwritten and buy nothing. Picking it once at the greeter is also what keeps
-the switch reversible there, which is the point of leaving HyDE installed.
+overwritten and buy nothing. Picking it once at the greeter kept the switch reversible while HyDE was still
+installed; now it is simply the session that was last used.
 
 **`uninstall.sh` removes the entry**, and that matters more than it sounds.
 It is installed with `sudo` into `/usr/share/wayland-sessions/`, outside every
-path the uninstaller scans, so it has to be handled by name like the HyDE themes
-are. Left behind, it is not a dangling link but a login option that *fails* —
+path the uninstaller scans, so it has to be handled by name rather than found. Left behind, it is not a dangling link but a login option that *fails* —
 met at a greeter, which is the worst place to debug anything. It is removed only
 while its `Exec` still names this repo's `init.lua`.
 
@@ -663,8 +631,8 @@ still-frame extraction, a matugen call and a terminal reload. This does the two
 things the picker needs.
 
 **It never stretches.** `awww`'s default `crop` fills the screen and discards
-the overflow while keeping the aspect ratio, so the distortion HyDE produced is
-not inherited. On the 5120x1440 ultrawide crop keeps the width and loses roughly
+the overflow while keeping the aspect ratio, so the distortion HyDE used to
+produce is not inherited. On the 5120x1440 ultrawide crop keeps the width and loses roughly
 60% of a 16:9 image's height — `DOTFILES_WALLPAPER_RESIZE=fit` shows the whole
 image instead, padded with the palette's darkest colour rather than black so the
 bands read as desktop. `DOTFILES_WALLPAPER_GRAVITY` picks which part survives a
@@ -768,8 +736,6 @@ earlier install/uninstall cycle. The one obligation it creates: **a new link out
 those locations must be added to `repo_links()`**, or uninstalling leaves it
 dangling.
 
-Copied files are not links and are handled by name: HyDE theme directories are
-removed, and a wallbash template only when it still matches the repo's copy.
 `~/.claude/settings.json` is not restored from a backup, since what it held
 before the merge cannot be told from the backups, which the merge also writes.
 Only the registrations for this repo's hook scripts are removed, because they
