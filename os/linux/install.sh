@@ -350,6 +350,23 @@ install_wallbash_templates() {
     echo "Applied on the next theme or wallpaper change."
 }
 
+# The bar reads its colours from a generated JSON file rather than from
+# anything tracked, so a fresh machine needs it written once before the first
+# login. Without it the vendored pill falls back to its own warm palette --
+# usable, but not this scheme.
+#
+# Cheap and idempotent, so it runs every install: it is also how a palette.lua
+# edit reaches the bar.
+install_pill_palette() {
+    local script="$DOTFILES_DIR/os/linux/desktop/quickshell/apply-palette.sh"
+
+    [[ -x "$script" ]] || return 0
+
+    info "Applying the palette to the bar..."
+
+    run "$script"
+}
+
 # Called by the shared installer after the ~/.dotfiles symlink exists.
 os_link_configs() {
     # Additive and HyDE-independent: these are user-tier files that HyDE seeds
@@ -359,6 +376,9 @@ os_link_configs() {
     # Also additive: a second session entry alongside whatever is already
     # installed, never a replacement for it.
     install_desktop_session
+
+    # Writes generated files outside the repo, so it is safe alongside HyDE.
+    install_pill_palette
 
     if hyde_owns_desktop_configs; then
         # Additive: theme directories HyDE doesn't own and won't overwrite, so
