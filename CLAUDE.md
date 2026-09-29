@@ -551,6 +551,54 @@ branch repaints the desktop you are sitting in. There is no isolated way to try
 it: the bar's colour path is fixed by the vendored code and cannot be
 redirected.
 
+#### A palette can come from the wallpaper
+
+`quickshell/scripts/generate-palette.sh <image>` runs matugen and writes a Lua
+table with the same twelve names `lib/palette.lua` uses, so a derived palette is
+shaped exactly like a hand-written one and **nothing downstream can tell the
+difference**. That is what the palette discipline was sequenced for.
+
+A rice opts in with `palette_from = "wallpaper"`. Colours then resolve in three
+layers, each falling through to the next:
+
+| | |
+|---|---|
+| the rice's own `palette.lua` | static, wins |
+| the generated palette | when the rice asks for one |
+| the grey floor | always underneath |
+
+The static layer winning is what lets a rice derive most of a scheme and still
+pin the one or two colours it cares about.
+
+**Generation is unconditional; use is opt-in.** `wallpaper.sh` regenerates after
+every whole-desktop change whether or not any rice wants it, because generating
+is cheap and doing it always means switching a rice to dynamic takes effect
+immediately rather than waiting for the next wallpaper. Whether the result is
+*used* is decided in `lib/palette.lua`, which is the layer that should decide it.
+
+**A wallpaper change on a dynamic rice repaints the desktop**, which needs
+`render-theme.lua` and a `hyprctl reload` after the generation — otherwise the
+new colours sit in a file until something else happens to re-render. That runs
+only for a rice deriving its colours; for any other it would be churn ending in
+a reload nobody asked for.
+
+Two details that are not preferences:
+
+- **`--prefer` is required.** With several candidate source colours and no
+  terminal attached — which is always, from a script — matugen refuses rather
+  than choosing, and the error names the missing preference rather than the
+  image. `saturation` picks the most colourful candidate, which is what a
+  wallpaper is usually recognisable by.
+- **The text ramp needs a blend.** Ours has four steps and matugen's usable text
+  tokens give three (`on_surface`, `on_surface_variant`, `outline`); the next one
+  down, `outline_variant`, is a divider colour far too dark to read. Rather than
+  point two names at one value and lose a level, `fg_muted` is the midpoint of
+  the two either side of it.
+
+**Dark only.** matugen produces both schemes; this desktop assumes dark
+throughout, and supporting light would mean every consumer template growing a
+second branch.
+
 #### The wallpaper setter
 
 `quickshell/scripts/wallpaper.sh` implements the contract the vendored
