@@ -357,6 +357,22 @@ install_wallbash_templates() {
 #
 # Cheap and idempotent, so it runs every install: it is also how a palette.lua
 # edit reaches the bar.
+# The pill shells out to helpers it expects at ~/.config/hypr/scripts. A whole
+# directory rather than file-by-file, so a script added to the repo is live
+# without touching the installer.
+#
+# ~/.config/hypr is otherwise HyDE's, but it ships no scripts/ of its own, so
+# nothing is displaced. Worth remembering that HyDE deploys with `cp -rf`,
+# which writes *through* a symlink -- if it ever grows a scripts/ directory,
+# this link is how its contents would land in the repo.
+install_pill_scripts() {
+    local scripts="$DOTFILES_DIR/os/linux/desktop/quickshell/scripts"
+
+    [[ -d "$scripts" ]] || return 0
+
+    link_config "$scripts" "$HOME/.config/hypr/scripts"
+}
+
 install_pill_palette() {
     local script="$DOTFILES_DIR/os/linux/desktop/quickshell/apply-palette.sh"
 
@@ -379,6 +395,8 @@ os_link_configs() {
 
     # Writes generated files outside the repo, so it is safe alongside HyDE.
     install_pill_palette
+
+    install_pill_scripts
 
     if hyde_owns_desktop_configs; then
         # Additive: theme directories HyDE doesn't own and won't overwrite, so
