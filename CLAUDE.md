@@ -387,6 +387,32 @@ startup, only one process may own that name, so dunst is never D-Bus activated
 while the pill holds it. If the pill dies the next notification starts dunst,
 which is a fallback worth keeping rather than a conflict to suppress.
 
+#### Binding a surface needs the monitor named
+
+The launcher and clipboard are surfaces of the bar, reached over Quickshell IPC:
+
+```sh
+qs -p <pill path> ipc call pill launcher "$(hyprctl activeworkspace -j | jq -r .monitor)"
+```
+
+Addressed by **path**, because `qs -c pill` only resolves a config installed
+under `~/.config/quickshell` and this one is read out of the repo.
+
+**The monitor is looked up rather than passed empty, and that is not caution.**
+`toggleSurface` falls back to Quickshell's `Hyprland.focusedMonitor` for an empty
+string, and that property is populated from the `focusedmon` event — so it is
+null until focus has *changed* at least once. Hyprland itself reports the monitor
+as `focused=true` the whole time, so nothing looks wrong; the surface simply
+never opens. It fails exactly when the desktop is freshest: right after login,
+before focus has moved. Measured in a nested session — with `""` nothing renders,
+with the name it opens immediately.
+
+Asking for a surface that is already open closes it, so toggling is free and the
+`pkill -x rofi ||` prefix the rofi bindings carried is not needed.
+
+Upstream binds none of this; they open surfaces by clicking the pill, which is
+why there is no reference invocation to copy.
+
 #### Theming the pill is writing one file
 
 The pill reads every colour from `$XDG_CACHE_HOME/ricelin/colors.json` and
