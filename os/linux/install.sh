@@ -232,6 +232,65 @@ install_hypr_configs() {
 }
 
 # -----------------------------------------------------------------------------
+# Lua desktop session
+# -----------------------------------------------------------------------------
+
+# Installs a second login session that runs this repo's Lua Hyprland config,
+# leaving the existing one alone. Both appear at the login screen, so switching
+# between them is a choice made there, and removing the entry below reverts to
+# whatever was there before with nothing else touched.
+#
+# The config is named with --config rather than by exporting HYPRLAND_CONFIG.
+# HyDE assigns that variable unconditionally in its own uwsm env fragment, so
+# using it would mean winning an ordering contest inside uwsm's env.d for a file
+# this repo does not own. --config is read in preference to the variable
+# (verified on 0.56.2) and needs no HyDE file edited.
+#
+# The entry is a template because the path must be absolute: Desktop Entry
+# field codes have nothing for the home directory, and /usr/share/wayland-
+# sessions is root-owned and shared between users.
+SESSION_ENTRY="/usr/share/wayland-sessions/hyprland-dotfiles.desktop"
+
+install_desktop_session() {
+    local desktop_dir="$DOTFILES_DIR/os/linux/desktop"
+    local template="$desktop_dir/session/hyprland-dotfiles.desktop.in"
+    local init_lua="$HOME/.dotfiles/os/linux/desktop/init.lua"
+
+    [[ -f "$template" ]] || return 0
+
+    # A config that does not parse must never reach the login screen, where the
+    # only way to read the error is from another machine. Hyprland parses it
+    # without starting a session, so this costs nothing and catches everything
+    # the compositor would have refused.
+    info "Verifying the Lua Hyprland configuration..."
+
+    if ! "$desktop_dir/verify-config.sh" "$desktop_dir/init.lua"; then
+        echo "Refusing to install the session entry while the config has errors."
+        return 1
+    fi
+
+    info "Installing the 'Hyprland (dotfiles)' session..."
+
+    # Needs root: session entries are system-wide. Written via a temporary file
+    # so a failed substitution cannot leave a half-written entry that SDDM would
+    # still offer.
+    local staged="${TMPDIR:-/tmp}/hyprland-dotfiles.desktop.$$"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "[dry-run] install $template -> $SESSION_ENTRY (INIT_LUA=$init_lua)"
+        return 0
+    fi
+
+    sed "s|@INIT_LUA@|$init_lua|" "$template" > "$staged"
+
+    sudo install -Dm644 "$staged" "$SESSION_ENTRY"
+    rm -f "$staged"
+
+    echo "    Log out and pick 'Hyprland (dotfiles)' to try it."
+    echo "    The existing session is untouched and still the one to fall back to."
+}
+
+# -----------------------------------------------------------------------------
 # Wallbash templates
 # -----------------------------------------------------------------------------
 
@@ -266,6 +325,10 @@ os_link_configs() {
     # Additive and HyDE-independent: these are user-tier files that HyDE seeds
     # but never rewrites, so they link whether or not HyDE is present.
     install_hypr_configs
+
+    # Also additive: a second session entry alongside whatever is already
+    # installed, never a replacement for it.
+    install_desktop_session
 
     if hyde_owns_desktop_configs; then
         # Additive: theme directories HyDE doesn't own and won't overwrite, so
