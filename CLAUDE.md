@@ -390,6 +390,22 @@ uwsm: error: unrecognized arguments: --config /home/…/init.lua
 
 uwsm then exits before Hyprland is ever reached, and the display manager returns to the greeter — which presents as a failed login, not a malformed command. HyDE's own entry needs no `--` only because a Desktop Entry ID takes no trailing options.
 
+**Nothing makes it the default, and nothing needs to.** sddm's
+`RememberLastSession` defaults to true, so it preselects whatever was last used
+successfully — choose this session once and every later login lands on it. There
+is no sddm key for "preselect without autologin": `[Autologin] Session=` turns
+autologin *on*, and the last-session value lives in `/var/lib/sddm/state.conf`,
+which sddm owns and rewrites at every login. Pre-seeding that would be
+overwritten and buy nothing. Picking it once at the greeter is also what keeps
+the switch reversible there, which is the point of leaving HyDE installed.
+
+**`uninstall.sh` removes the entry**, and that matters more than it sounds.
+It is installed with `sudo` into `/usr/share/wayland-sessions/`, outside every
+path the uninstaller scans, so it has to be handled by name like the HyDE themes
+are. Left behind, it is not a dangling link but a login option that *fails* —
+met at a greeter, which is the worst place to debug anything. It is removed only
+while its `Exec` still names this repo's `init.lua`.
+
 So the installer checks the Exec line as well as the config, with `uwsm start -n` (writes and starts nothing, safe from inside a running session). **It reads the line from the template and substitutes it exactly as the entry will be**, rather than rebuilding an equivalent command — a check that passes while the installed entry is broken is worse than no check. Verifying the config proves the compositor would accept it and says nothing about the command line that launches it.
 
 #### Colours go through the palette, never into a config file
