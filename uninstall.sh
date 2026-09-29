@@ -32,6 +32,21 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=false
 REMOVE_TOOLS=false
 
+# -----------------------------------------------------------------------------
+# XDG base directories
+# -----------------------------------------------------------------------------
+
+# Resolved rather than assumed, the same way os/linux/desktop/snapshot.sh does.
+# This machine has them all at their defaults, so hardcoding ~/.config would
+# work by coincidence -- and coincidence is exactly how `dev` broke, assuming
+# ~/.zshrc while ZDOTDIR pointed at ~/.config/zsh.
+XDG_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+# Not in the base directory spec, but the de facto name for it, and the spec
+# does reserve ~/.local/bin as the default.
+XDG_BIN="${XDG_BIN_HOME:-$HOME/.local/bin}"
+
+
 # For display. `${path/#$HOME/~}` does not work: the replacement undergoes tilde
 # expansion, turning the `~` straight back into $HOME.
 TILDE='~'
@@ -114,8 +129,8 @@ backup_for() {
 repo_links() {
     {
         find "$HOME" -maxdepth 1 -type l 2>/dev/null || true
-        find "$HOME/.config" -maxdepth 2 -type l 2>/dev/null || true
-        find "$HOME/.local/bin" -maxdepth 1 -type l 2>/dev/null || true
+        find "$XDG_CONFIG" -maxdepth 2 -type l 2>/dev/null || true
+        find "$XDG_BIN" -maxdepth 1 -type l 2>/dev/null || true
         find "$HOME/.claude" -maxdepth 1 -type l 2>/dev/null || true
     } | sort -u | while IFS= read -r link; do
         [[ "$link" == "$HOME/.dotfiles" ]] && continue
@@ -269,7 +284,7 @@ fi
 tool_paths=(
     "$HOME/.local/opt/nvim-python"
     "$HOME/.local/opt/netcoredbg"
-    "$HOME/.config/tmux/plugins"
+    "$XDG_CONFIG/tmux/plugins"
 )
 
 present_tools=()
@@ -278,7 +293,7 @@ for path in "${tool_paths[@]}"; do
 done
 
 # Links into the venv, not the repo, so the scan above leaves it.
-jupytext_link="$HOME/.local/bin/jupytext"
+jupytext_link="$XDG_BIN/jupytext"
 if [[ -L "$jupytext_link" && "$(readlink "$jupytext_link")" == "$HOME/.local/opt/nvim-python/"* ]]; then
     present_tools+=("$jupytext_link")
 fi

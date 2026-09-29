@@ -10,6 +10,21 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=false
 INSTALL_CLAUDE=true
 
+# -----------------------------------------------------------------------------
+# XDG base directories
+# -----------------------------------------------------------------------------
+
+# Resolved rather than assumed, the same way os/linux/desktop/snapshot.sh does.
+# This machine has them all at their defaults, so hardcoding ~/.config would
+# work by coincidence -- and coincidence is exactly how `dev` broke, assuming
+# ~/.zshrc while ZDOTDIR pointed at ~/.config/zsh.
+XDG_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+# Not in the base directory spec, but the de facto name for it, and the spec
+# does reserve ~/.local/bin as the default.
+XDG_BIN="${XDG_BIN_HOME:-$HOME/.local/bin}"
+
+
 # Set by the OS-specific installer sourced below.
 NVM_SH=""
 
@@ -361,11 +376,11 @@ link_redirected_zshrc
 # directory is linked on every OS.
 info "Linking ~/.config/nvim..."
 
-run "mkdir -p '$HOME/.config'"
+run "mkdir -p '$XDG_CONFIG'"
 
 link_config \
     "$HOME/.dotfiles/nvim" \
-    "$HOME/.config/nvim"
+    "$XDG_CONFIG/nvim"
 
 # -----------------------------------------------------------------------------
 # Neovim Python host
@@ -419,11 +434,11 @@ if command -v python3 &>/dev/null; then
     # jupytext.nvim shells out to `jupytext` on PATH, and has no setting for
     # its location. Only that one binary is linked: putting the venv's bin/ on
     # PATH would shadow the project's own `python`.
-    run "mkdir -p '$HOME/.local/bin'"
+    run "mkdir -p '$XDG_BIN'"
 
     link_config \
         "$NVIM_PYTHON_DIR/bin/jupytext" \
-        "$HOME/.local/bin/jupytext"
+        "$XDG_BIN/jupytext"
 else
     info "python3 not found, skipping Neovim Python host."
 fi
@@ -482,25 +497,25 @@ fi
 # correctly during a dry run, when that symlink may not exist yet.
 info "Linking tmux configuration..."
 
-run "mkdir -p '$HOME/.config/tmux'"
+run "mkdir -p '$XDG_CONFIG/tmux'"
 
 link_config \
     "$HOME/.dotfiles/tmux/tmux.conf" \
-    "$HOME/.config/tmux/tmux.conf"
+    "$XDG_CONFIG/tmux/tmux.conf"
 
 if [[ -f "$OS_DIR/tmux.conf" ]]; then
     link_config \
         "$HOME/.dotfiles/os/$DOTFILES_OS/tmux.conf" \
-        "$HOME/.config/tmux/os.conf"
+        "$XDG_CONFIG/tmux/os.conf"
 fi
 
 # The sessionizer is bound to prefix + f, and put on PATH so it also works from
 # a plain shell. ~/.local/bin is already exported in zsh/exports.zsh.
-run "mkdir -p '$HOME/.local/bin'"
+run "mkdir -p '$XDG_BIN'"
 
 link_config \
     "$HOME/.dotfiles/tmux/scripts/tmux-sessionizer" \
-    "$HOME/.local/bin/tmux-sessionizer"
+    "$XDG_BIN/tmux-sessionizer"
 
 # -----------------------------------------------------------------------------
 # tmux plugins
@@ -512,7 +527,7 @@ link_config \
 #
 # Cloning only bootstraps tpm itself; press prefix + I inside tmux to install
 # the plugins it manages.
-TPM_DIR="$HOME/.config/tmux/plugins/tpm"
+TPM_DIR="$XDG_CONFIG/tmux/plugins/tpm"
 
 if [[ ! -d "$TPM_DIR" ]]; then
     info "Installing tmux plugin manager..."
@@ -538,7 +553,7 @@ fi
 # User configuration reminder
 # -----------------------------------------------------------------------------
 
-USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
+USER_CONFIG_DIR="${XDG_CONFIG_HOME:-$XDG_CONFIG}/dotfiles"
 
 info "Checking $(basename "$(dirname "$USER_CONFIG_DIR")")/dotfiles..."
 
@@ -563,14 +578,14 @@ elif [[ -d "$HOME/.userconfig" ]]; then
     echo "Merge them by hand; this installer will not choose between them."
 fi
 
-if [[ ! -d "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles" ]]; then
+if [[ ! -d "${XDG_CONFIG_HOME:-$XDG_CONFIG}/dotfiles" ]]; then
     if [[ "$DRY_RUN" == true ]]; then
         echo "[dry-run] create ~/.config/dotfiles structure"
     else
-        mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/zsh/extensions"
-        mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/zsh/secrets"
+        mkdir -p "${XDG_CONFIG_HOME:-$XDG_CONFIG}/dotfiles/zsh/extensions"
+        mkdir -p "${XDG_CONFIG_HOME:-$XDG_CONFIG}/dotfiles/zsh/secrets"
 
-        cat > "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/README.md" <<EOF
+        cat > "${XDG_CONFIG_HOME:-$XDG_CONFIG}/dotfiles/README.md" <<EOF
 # Local User Configuration
 
 This directory is intentionally not managed by dotfiles.
@@ -606,7 +621,7 @@ fi
 # Outside the first-run block on purpose: machines whose ~/.config/dotfiles predates
 # the nvim files get the directory too. mkdir -p is a no-op when it exists and
 # never touches the files inside.
-run "mkdir -p '${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/nvim/projects'"
+run "mkdir -p '${XDG_CONFIG_HOME:-$XDG_CONFIG}/dotfiles/nvim/projects'"
 
 # -----------------------------------------------------------------------------
 # Done

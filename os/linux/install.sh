@@ -5,7 +5,8 @@
 # -----------------------------------------------------------------------------
 #
 # Sourced (not executed) by ../../install.sh, so DOTFILES_DIR, DOTFILES_DISTRO,
-# DRY_RUN and the info()/run() helpers are already defined here.
+# DRY_RUN, the info()/run() helpers and the resolved XDG_CONFIG / XDG_BIN are
+# already defined here.
 #
 # Contract with the shared installer:
 #   - install the packages this OS needs
@@ -107,7 +108,7 @@ HYPR_USER_CONFIGS=(
 # colors/gaps/rounding/blur to the theme, or theme switching will look broken.
 install_hypr_configs() {
     local src="$HOME/.dotfiles/os/linux/hypr"
-    local dest="$HOME/.config/hypr"
+    local dest="$XDG_CONFIG/hypr"
     local file
 
     [[ -d "$DOTFILES_DIR/os/linux/hypr" ]] || return 0
@@ -244,7 +245,7 @@ install_desktop_session() {
 # machine that already has one.
 install_hypridle_conf() {
     local src="$DOTFILES_DIR/os/linux/desktop/hypridle.conf"
-    local dest="$HOME/.config/hypr/hypridle.conf"
+    local dest="$XDG_CONFIG/hypr/hypridle.conf"
 
     [[ -f "$src" ]] || return 0
 
@@ -255,7 +256,7 @@ install_hypridle_conf() {
 
     info "Seeding the idle configuration..."
 
-    run "mkdir -p '$HOME/.config/hypr'"
+    run "mkdir -p '$XDG_CONFIG/hypr'"
     run "cp '$src' '$dest'"
 }
 
@@ -264,7 +265,7 @@ install_pill_scripts() {
 
     [[ -d "$scripts" ]] || return 0
 
-    link_config "$scripts" "$HOME/.config/hypr/scripts"
+    link_config "$scripts" "$XDG_CONFIG/hypr/scripts"
 }
 
 # Generates every config that carries a colour, from lib/palette.lua. The
@@ -327,21 +328,21 @@ os_link_configs() {
     # config serves both sessions while both exist.
     info "Configuring Kitty..."
 
-    run "mkdir -p '$HOME/.config/kitty'"
+    run "mkdir -p '$XDG_CONFIG/kitty'"
 
     link_config \
         "$HOME/.dotfiles/kitty/kitty.conf" \
-        "$HOME/.config/kitty/kitty.conf"
+        "$XDG_CONFIG/kitty/kitty.conf"
 
     link_config \
         "$HOME/.dotfiles/kitty/theme.conf" \
-        "$HOME/.config/kitty/theme.conf"
+        "$XDG_CONFIG/kitty/theme.conf"
 
     info "Configuring Fastfetch..."
 
-    run "mkdir -p '$HOME/.config/fastfetch'"
+    run "mkdir -p '$XDG_CONFIG/fastfetch'"
 
     link_config \
         "$HOME/.dotfiles/fastfetch/config.jsonc" \
-        "$HOME/.config/fastfetch/config.jsonc"
+        "$XDG_CONFIG/fastfetch/config.jsonc"
 }
