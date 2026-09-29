@@ -730,8 +730,33 @@ was last set across everything.
 output width.** Measured on this machine against 5120x1440: 5120x2880 and
 5120x2160 both crop, while 5000x2880, 5000x2812 and 6000x3375 all fit correctly
 — so it is width equality, not the scale factor or the aspect. It bites exactly
-the wallpapers cut for this screen's width, and there is no flag that works
-around it; the only fixes are a pre-rendered image or an upstream patch.
+the wallpapers cut for this screen's width, which is the collection an ultrawide
+accumulates.
+
+**So the script does awww's job for it.** For an affected output it renders the
+image into a frame that output's size, padded, and passes that with
+`--resize no`. There is no flag that avoids this: the bug is in the resize path,
+so the only way past is not to use it.
+
+Three things keep that from leaking:
+
+- **It is per output, and only the affected ones.** Two screens of different
+  shapes get their own frame rather than sharing one, and an unaffected screen
+  still gets the original image. When nothing is affected the call is the single
+  unchanged `awww img` it always was, so an ordinary wallpaper pays nothing.
+- **`$STATE` records the original path, never the frame**, so the bar still
+  marks the right wallpaper as current and the palette is still generated from
+  the real image.
+- **A failed render is not a failed wallpaper.** It warns and falls through to
+  awww, which crops — wrong, but a wallpaper.
+
+Frames go to `$XDG_CACHE_HOME/dotfiles/wallpaper/<output>.png`, one per output,
+overwritten. A keyed cache would need pruning to stay honest, and re-rendering
+costs a few hundred milliseconds only for affected images.
+
+**Untested on a scaled output.** Everything here is scale 1, and whether awww
+reports logical or physical pixels for a HiDPI output decides whether the frame
+comes out the right size.
 
 **A recorded path that no longer exists is not an answer.** Both `resolve` and
 `current` check before returning one, which is what lets a renamed folder heal
