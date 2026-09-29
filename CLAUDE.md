@@ -488,6 +488,55 @@ works anyway — `Notifs` reads `Flags.dnd` directly at the point of use), and t
 notification server fails to register inside a nested session because the real
 one outside already owns the name.
 
+#### A rice is a directory, and one state file picks it
+
+`os/linux/desktop/rices/<name>/` holds `palette.lua` (the colours) and
+`rice.lua` (which provider fills each role, plus the non-colour knobs). That is
+everything a look is, apart from the machine it runs on.
+
+```sh
+os/linux/desktop/rice.sh                 # list, marking the active one
+os/linux/desktop/rice.sh switch slate    # wear a different one
+```
+
+Which one is active lives in `$XDG_STATE_HOME/dotfiles/rice`, **not in the
+repo** — so a machine can wear a different look without a commit, and the
+choice does not follow a push to another machine.
+
+**Both halves are partial.** A rice that only changes the launcher names only
+the launcher; roles and colours it leaves out keep what they had. Roles inherit
+through a metatable, which is why `start_commands()` walks the *defaults* table
+— `pairs()` does not see inherited keys, so iterating the active table would
+shrink the desktop to whatever roles the rice happened to mention.
+
+**Nothing in the resolution is fatal.** A missing state file, a stale name, a
+`rice.lua` that does not parse — each falls back and warns, because this is
+runtime state a switch can leave half-written. That is deliberately the opposite
+of `lib/roles.lua`, which raises: the roles table is repo code with
+`verify-config.sh` in front of it. Warnings surface as notifications from
+`init.lua`, since `lib/rice.lua` is loaded while the config is still parsing and
+has no session to notify yet.
+
+**The palette's fallback is flat grey on purpose**, and is not a copy of any
+real scheme. A rice that fails to load should give a desktop that plainly looks
+wrong rather than a plausible one that quietly is — and a drab floor can never
+drift from a scheme the way a duplicate would. `lib/look.lua`'s defaults are the
+opposite: a working desktop, because a missing gap size has no visual tell.
+
+**A switch applies in place, except for providers.** Colours, gaps, rounding,
+blur and motion all change on `hyprctl reload`. Changing which *program* fills a
+role does not, because reload re-reads the config without re-running autostart —
+so `rice.sh` compares the start commands either side of the switch and says a
+re-login is needed. It asks the roles table rather than the rice, which is what
+keeps that right as providers change.
+
+**A switch is machine-wide even from a worktree.** The state file and the
+rendered output live under XDG paths, one set per machine rather than per
+checkout, and the bar watches its colour file — so running `rice.sh` from a
+branch repaints the desktop you are sitting in. There is no isolated way to try
+it: the bar's colour path is fixed by the vendored code and cannot be
+redirected.
+
 #### Generated configs
 
 **No config outside `lib/palette.lua` contains a colour.** `render-theme.lua`
