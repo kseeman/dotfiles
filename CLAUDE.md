@@ -522,6 +522,41 @@ Asking for a surface that is already open closes it, so toggling is free and the
 Upstream binds none of this; they open surfaces by clicking the pill, which is
 why there is no reference invocation to copy.
 
+#### Game mode is a role, and `hyprctl keyword` cannot set it
+
+`quickshell/scripts/gamemode.sh on` drops gaps, rounding and blur and makes
+every window opaque; `off` puts it back.
+
+**Borders are deliberately kept.** Zeroing `border_size` as well as the gaps
+leaves adjacent windows as one undivided surface with no telling where one ends
+— worse to play next to than a gap. Borders cost no space once the gaps are
+gone, and they follow the rice like everything else. The pill's `GameMode.qml` runs it
+whenever `Flags.gameMode` changes, so the mixer chip, `SUPER+CTRL+G` and IPC all
+arrive at the same place.
+
+**`hyprctl keyword` does not work against a Lua config.** Hyprland answers
+
+    keyword can't work with non-legacy parsers. Use eval.
+
+so every setting goes through `hyprctl eval`, running the same `hl.config` and
+`hl.window_rule` the config files use. Worth knowing well beyond game mode —
+every `hyprctl keyword` recipe on the internet is inapplicable here.
+
+**Turning `decoration:active_opacity` up is not enough.** The per-class opacity
+rules in `config/rules.lua` outrank it, so kitty and the rest stay translucent.
+A catch-all `window_rule` added last is what actually makes windows opaque.
+
+**Off is a reload, not a restore.** The config is the source of truth for every
+one of these settings, so re-reading it is exactly right and there is no
+snapshot to go stale — a pill restart mid-game, a rice switch or an edit to
+`look.lua` all resolve correctly because nothing was remembered. `hyprctl
+reload` re-reads without re-running autostart, which is what makes it safe at
+any moment.
+
+**The keybind goes through the role, not the script.** Calling `gamemode.sh`
+directly would strip the desktop while the bar still believed game mode was off,
+leaving its chip and its height out of step with the compositor.
+
 #### Theming the pill is writing one file
 
 The pill reads every colour from `$XDG_CACHE_HOME/ricelin/colors.json` and
