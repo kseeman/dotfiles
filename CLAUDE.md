@@ -839,10 +839,49 @@ rice while the sixteen ANSI colours stay hand-picked. Deriving those from this
 palette would give three shades of one violet where red, green and yellow should
 be, and terminal output that cannot be told apart: ANSI colours need to be
 distinguishable from *each other*, which is a different job from matching the
-desktop. matugen does emit a base16 set, so deriving them properly is possible
-later, but that is not the same as reading them off this ramp.
+desktop.
+
+**Deriving them is not possible with matugen 4.2.0**, which an earlier note here
+assumed it would be. Its `-b wal` base16 output collapses `base08`..`base0F` —
+exactly the eight syntax and ANSI hues — to near-black: `#000000` for two test
+images and a spread of two units around `#271c27` for a third. Its own
+`primary`/`secondary`/`tertiary`/`error` are no better, coming out as four
+shades of one hue, because the default `scheme-tonal-spot` derives them all from
+a single source colour. A scheme that spreads hues (`scheme-rainbow`,
+`scheme-fruit-salad`) would be the thing to try if this is revisited.
 
 A missing include is a warning kitty ignores, so macOS keeps `theme.conf` alone.
+
+**nvim splits the same way, for the same reason.** `nvim/lua/themes/rice.lua` is
+a base46 theme whose *structure* — backgrounds, the surface ramp, line numbers,
+separators, selection, comments, the accent on a popup selection and a float
+border — comes from the rice, while the syntax hues stay tokyonight's. base46
+resolves `themes.<name>` from this config before its own, so the name in
+`chadrc.lua` is just the file.
+
+Three things about it are load-bearing:
+
+- **The theme is tracked and carries no desktop colour.** Values arrive through
+  `$THEME_DIR/nvim.lua`, rendered from the palette like every other consumer.
+  Unlike kitty's output this one follows `XDG_CACHE_HOME`, because nvim can
+  resolve the base directories itself.
+- **It falls back to tokyonight's own structural values** when there is no
+  generated palette — a Mac, a fresh machine, a rice switch caught half-written.
+  Verified against a missing file and a truncated one; both give the colours
+  this config had before, so the failure is invisible rather than broken.
+- **base46 compiles themes to bytecode and `init.lua` only loads the result**,
+  so a palette change reaches nvim through a recompile rather than by being
+  read. `init.lua` stats the generated palette against the compiled cache and
+  recompiles when it is newer — one stat per start, and measured not to
+  recompile when nothing changed. Everywhere else a palette edit lands at the
+  next login; here it lands at the next nvim start.
+
+**`transparency = true` in `chadrc.lua` blanks most backgrounds**, so several of
+the mapped names have no visible effect while it is on: `Normal`, `CursorLine`,
+`Pmenu` and the statusline all come back unset. What actually changes with the
+rice is the selection, comments, line numbers, window separators, float and
+Telescope borders, and the popup selection. Turning transparency off is what
+would make `statusline_bg` and the surface ramp show.
 
 **One include line, unlike tmux's two — and that difference is not cosmetic.**
 kitty treats a file included twice as a configuration *error* and puts a dialog

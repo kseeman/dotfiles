@@ -6,7 +6,13 @@
 local M = {}
 
 M.base46 = {
-	theme = "tokyonight",
+  -- lua/themes/rice.lua: tokyonight's syntax hues over whichever rice the
+  -- desktop is wearing. base46 resolves `themes.<name>` from this config before
+  -- its own, so the name is the file.
+  --
+  -- On a machine with no desktop palette to read it falls back to tokyonight's
+  -- own structural values, so this is not a Linux-only setting.
+	theme = "rice",
   transparency = true,
 
 	-- hl_override = {
