@@ -524,13 +524,18 @@ why there is no reference invocation to copy.
 
 #### Game mode is a role, and `hyprctl keyword` cannot set it
 
-`quickshell/scripts/gamemode.sh on` drops gaps, rounding and blur and makes
-every window opaque; `off` puts it back.
+`quickshell/scripts/gamemode.sh on` drops gaps, rounding, blur, shadows and
+animations and makes every window opaque, keeping a 1px border; `off` puts it
+back.
 
-**Borders are deliberately kept.** Zeroing `border_size` as well as the gaps
-leaves adjacent windows as one undivided surface with no telling where one ends
-— worse to play next to than a gap. Borders cost no space once the gaps are
-gone, and they follow the rice like everything else. The pill's `GameMode.qml` runs it
+**It is what HyDE's `workflows/gaming.conf` did**, recovered from a snapshot
+after the clone was gone — which is the snapshot tooling earning its keep. The
+1px border is theirs too, and is the answer to windows otherwise becoming one
+undivided surface once the gaps go.
+
+**The bar is deliberately untouched.** Upstream's pill shrinks to a 34px sliver
+in game mode, which makes it unusable exactly when a game is running full-screen
+underneath. Game mode here is a compositor change only. The pill's `GameMode.qml` runs it
 whenever `Flags.gameMode` changes, so the mixer chip, `SUPER+CTRL+G` and IPC all
 arrive at the same place.
 
