@@ -363,9 +363,22 @@ Details that are load-bearing rather than incidental:
 #### Getting a snapshot off the machine
 
 ```sh
-os/linux/desktop/archive.sh put          # pack, encrypt, copy the latest
-os/linux/desktop/archive.sh get <name>   # bring one back
+os/linux/desktop/archive.sh put            # pack, encrypt, copy the latest
+os/linux/desktop/archive.sh verify [name]  # checksum and passphrase, without unpacking
+os/linux/desktop/archive.sh get <name>     # bring one back
 ```
+
+**`put` asks for the passphrase twice.** Nothing downstream can tell a typo from
+a passphrase: a mistyped one encrypts successfully, reports Done, and stays
+wrong until the day the archive is needed. `get` and `verify` ask once, because
+a wrong passphrase there fails immediately and visibly.
+
+**`verify` is the only thing that proves the passphrase in the password manager
+is the one that opens the archive.** `put` can prove only that the passphrase it
+was handed encrypts. Verify checks the recorded checksum against the bytes on
+the disk, then decrypts the whole stream into `tar -t` — every header parsed, so
+truncation and corruption are caught, and nothing written, so there is no
+temporary copy to remember to delete.
 
 The local snapshots stay exactly as they are — fast, hardlinked, symlink-aware.
 This is a second, slower copy for the failure they cannot cover: **losing the
