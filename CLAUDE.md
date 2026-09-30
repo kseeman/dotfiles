@@ -511,8 +511,13 @@ why there is no reference invocation to copy.
 
 #### Game mode is a role, and `hyprctl keyword` cannot set it
 
-`quickshell/scripts/gamemode.sh on` drops gaps, borders, rounding and blur, and
-makes every window opaque; `off` puts it back. The pill's `GameMode.qml` runs it
+`quickshell/scripts/gamemode.sh on` drops gaps, rounding and blur and makes
+every window opaque; `off` puts it back.
+
+**Borders are deliberately kept.** Zeroing `border_size` as well as the gaps
+leaves adjacent windows as one undivided surface with no telling where one ends
+— worse to play next to than a gap. Borders cost no space once the gaps are
+gone, and they follow the rice like everything else. The pill's `GameMode.qml` runs it
 whenever `Flags.gameMode` changes, so the mixer chip, `SUPER+CTRL+G` and IPC all
 arrive at the same place.
 
