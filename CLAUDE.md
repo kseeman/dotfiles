@@ -870,13 +870,28 @@ from each other, which three steps of one violet cannot manage.
 `Tela-circle-grey`. A rice that names none keeps whatever is set, like the
 wallpaper.
 
-**Dolphin's own layout is not in this repo.** The dock split and widths live in
-a base64 `QMainWindow::saveState` blob in `~/.local/state/dolphinstaterc`, keyed
-by screen resolution and rewritten by Dolphin on exit. In the current blob
-`placesDock` size is at the 2nd int after its name, `infoDock` pos and size at
-the 1st and 2nd, and the right dock width at offset 79. The information panel's
-preview scales with the dock's **width**, not its height, so shrinking that icon
-means narrowing the dock rather than shortening the panel.
+**Dolphin's layout is a script, because it cannot be a config file.**
+`dolphin-layout.sh` narrows the right dock and gives the height to Places. The
+dock geometry lives in a base64 `QMainWindow::saveState` blob in
+`~/.local/state/dolphinstaterc` — no ini key expresses it, so a tracked file
+could not say it, and Dolphin rewrites the blob on exit anyway.
+
+Three things that are not obvious:
+
+- **The preview icon scales with the dock's *width*, not its height.**
+  Shortening the information panel leaves the icon exactly as big; narrowing
+  the dock is what shrinks it. Measured, after shortening it first and seeing
+  no change.
+- **The split is a share, not a height.** The column's total is whatever the
+  window was when Dolphin last saved, so a fixed number is right for one window
+  size and wrong for every other. `DOLPHIN_PLACES_SHARE` defaults to 0.7.
+- **It refuses to run while Dolphin is open**, because Dolphin rewrites the
+  file when it quits and would put the old layout straight back.
+
+The blob is read structurally rather than by fixed offset: the dock items are
+found by their names (`placesDock`, `infoDock`) and the area width sits 19 bytes
+ahead of the first item's name. Every value read is range-checked, and the
+script refuses rather than writing nonsense into a binary whose layout moved.
 
 **`paletteMode` is separate and is setup, not theming.** `Theme.qml` ignores
 `colors.json` entirely while it is `"static"`, its default, so
