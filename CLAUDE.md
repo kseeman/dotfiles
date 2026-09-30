@@ -826,6 +826,58 @@ single source. A missing file costs one render, and for the lock it fails safe �
 hyprlock refuses to start without a config, so the failure is *no lock* rather
 than a lock screen that cannot be dismissed.
 
+#### Qt is four places, and only one of them themes Dolphin
+
+`qt/` renders the Qt side. It took three wrong guesses to find the layering, so
+it is written down:
+
+| file | who reads it |
+|---|---|
+| `kdeglobals` | **KDE applications — Dolphin, Ark, Gwenview** |
+| Kvantum's theme (`.kvconfig` + `.svg`) | draws every widget, whatever the palette says |
+| `qt5ct` / `qt6ct` | non-KDE Qt applications only |
+
+**Dolphin does not read the qt*ct palette.** Proved by launching it against an
+isolated `XDG_CONFIG_HOME` holding a palette-driven qt6ct scheme and
+`style=Fusion`: it came out in KDE's default light colours, because no
+`kdeglobals` was present.
+
+**KDE ignores a colour scheme that is not named.** With the `[Colors:*]`
+sections present but no `ColorScheme=` key, Dolphin silently keeps its defaults
+— which reads as a theme that simply does not apply. Both `[General]` and
+`[UiSettings]` carry the name.
+
+**Kvantum overrules all of it**, because it colours widgets from its own SVG
+rather than from any palette. So the theme is generated too: `kvantum-theme.*.in`
+are the HyDE wallbash files with their eight crimson values replaced by tokens,
+mapped onto this repo's ramp **by lightness** (2, 24, 32, 39, 45, 75, 80, 90 →
+`root` … `fg_bright`). That keeps the design and changes only the hue, which is
+the point — the shapes were wanted, the colour was not. Greys and pure black are
+left alone; they are neutral in the original too.
+
+**Three of these are merged, not written.** `kdeglobals`, `kvantum.kvconfig` and
+the qt*ct configs are live files their own applications write to — file-dialog
+geometry, wallet settings, whatever Kvantum Manager last did. `merge_ini()`
+replaces only the keys a template names. Merged keys are sorted so a fresh
+machine writes the same file twice.
+
+**Negative, Neutral and Positive stay fixed**, like kitty's ANSI colours and
+nvim's syntax hues: an error, a warning and a success have to be distinguishable
+from each other, which three steps of one violet cannot manage.
+
+**The icon theme is a rice knob, not a colour.** An icon set is drawn art, so
+`look.icon_theme` names one — violet takes `Tela-circle-purple`, slate
+`Tela-circle-grey`. A rice that names none keeps whatever is set, like the
+wallpaper.
+
+**Dolphin's own layout is not in this repo.** The dock split and widths live in
+a base64 `QMainWindow::saveState` blob in `~/.local/state/dolphinstaterc`, keyed
+by screen resolution and rewritten by Dolphin on exit. In the current blob
+`placesDock` size is at the 2nd int after its name, `infoDock` pos and size at
+the 1st and 2nd, and the right dock width at offset 79. The information panel's
+preview scales with the dock's **width**, not its height, so shrinking that icon
+means narrowing the dock rather than shortening the panel.
+
 **`paletteMode` is separate and is setup, not theming.** `Theme.qml` ignores
 `colors.json` entirely while it is `"static"`, its default, so
 `quickshell/pill-flags.sh` sets it once at install. It is merged with `jq`
