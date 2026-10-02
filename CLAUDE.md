@@ -738,7 +738,8 @@ upstream's version omits them.
 `quickshell/scripts/wallpaper.sh` implements the contract the vendored
 `Walls.qml` expects — `resolve` records the folder, `set <path> [output]`
 applies it, and two `ricelin-wallpaper*` state files are read back. The names
-are theirs because the paths are fixed in code we did not write.
+are theirs because the paths are fixed in code we did not write. `restore` is
+ours, and is what the `wallpaper` role runs at session start.
 
 Upstream's is ten kilobytes of shuffle bags, video wallpapers, per-output
 still-frame extraction, a matugen call and a terminal reload. This does the two
@@ -824,6 +825,36 @@ The daemon is started on demand, so the first wallpaper of a session works
 whether or not anything else has run. The current wallpaper is recorded only
 after `awww` succeeds, and only for a whole-desktop change — a per-output set
 leaves no single current.
+
+#### Restoring it at login
+
+`restore` starts the daemon and then checks whether every output is already
+showing what `set` would have put there — the recorded image, or the
+pre-rendered frame for an output the fit workaround covers. If it is, it does
+nothing; otherwise it sets the recorded wallpaper properly.
+
+**Starting the daemon is most of the fix.** awww-daemon restores its own
+per-output cache as it comes up (`--no-cache` opts out), so the screen is
+usually dressed before the check runs. The daemon was previously started only
+by `set`, so it existed only once something had already changed the wallpaper,
+and never at a fresh login.
+
+**It deliberately does not run `awww restore`.** That replays awww's own cached
+`(resize, path)` pair per output rather than asking this script what the
+wallpaper should look like, and the pair can be one this script never wrote: a
+`DP-1` entry of `no` plus the *original* image was observed here, and restoring
+it put the unpadded original on the ultrawide. An image file, the right file,
+the wrong picture. How that pair got written was never established, which is
+the reason not to depend on it being right.
+
+**So the check asks whether the picture is correct, not whether one is up.** It
+reuses the same `hits_fit_bug` the setting path uses, so the two cannot disagree
+about which outputs expect a frame. A wallpaper that was moved or deleted has no
+restore, and `cmd_current` already refuses a path that no longer exists — the
+background stays bare, which says so, rather than another pick hiding it.
+
+The cost of being wrong is one re-set: a matugen run and possibly one frame
+render, at login only, and only when something is actually out of place.
 
 **Not ported:** `wallpaper-search.sh` scrapes moewalls.com. The surface's search
 does nothing until that is a decision rather than something inherited.
