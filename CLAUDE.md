@@ -748,6 +748,22 @@ machine that already has one.**
 two `ignore_*_inhibit` settings, because it rewrites the whole file and
 upstream's version omits them.
 
+**A script reached through the scripts symlink must resolve its own path with
+`pwd -P`.** `~/.config/hypr/scripts` is a symlink into this repo and is the path
+every caller in vendored code and in `hypridle.conf` uses, but bash's `cd` is
+logical: `cd "$(dirname "$0")" && pwd` hands back the symlink, so the
+`%/quickshell/scripts` strip never fires and the desktop directory comes out
+wrong. Both `lock.sh` and `wallpaper.sh` had this.
+
+It failed loudly in one and silently in the other, which is the part worth
+remembering. `lock.sh` resolves the `lock` role through `package.path`, so a
+wrong directory meant `lib.roles` was not found, the command came back empty and
+the script exited 1 — **no idle lock, no lock from the power menu, and no lock
+before sleep.** `wallpaper.sh` only reads knobs that way, so every lookup
+returned empty and each one fell back to its built-in default: a rice setting
+`wallpaper_fit` or `wallpaper_fill` was quietly ignored for anything set from
+the picker.
+
 #### The wallpaper setter
 
 `quickshell/scripts/wallpaper.sh` implements the contract the vendored
