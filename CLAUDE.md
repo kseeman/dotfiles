@@ -488,8 +488,15 @@ worse. Diffing against upstream means re-cloning at the recorded commit.
 It is one bar and also most of the desktop: media with now-playing, calendar,
 wallpaper picker, clipboard history, mixer, network, bluetooth, tray,
 **notifications**, launcher and power menu. That is why `config/startup.lua`
-starts so little else — waybar, a wallpaper setter and the wifi/bluetooth
-applets are all things the pill already is.
+starts so little else — waybar and the wifi/bluetooth applets are all things
+the pill already is.
+
+**The wallpaper is the exception, and it reads like one.** The pill owns the
+*picker*, not the wallpaper: `Walls.qml` reads the state files and applies only
+when a thumb is chosen. So `wallpaper` is a role like any other, held by
+`providers/awww.lua`, and it is started from the roles loop. It was held by the
+pill for a while, which looked filled and meant nothing restored a wallpaper at
+login — the whole desktop came up bare after a reboot.
 
 **dunst needs no masking.** The pill claims `org.freedesktop.Notifications` at
 startup, only one process may own that name, so dunst is never D-Bus activated
@@ -618,6 +625,14 @@ the launcher; roles and colours it leaves out keep what they had. Roles inherit
 through a metatable, which is why `start_commands()` walks the *defaults* table
 — `pairs()` does not see inherited keys, so iterating the active table would
 shrink the desktop to whatever roles the rice happened to mention.
+
+**So a rice must not restate a default.** `violet` used to spell out the whole
+providers table, on the grounds that it was the rice the defaults were written
+from and seeing the set once was worth more than brevity. It is not: that is a
+second copy, and it drifted. Pointing the `wallpaper` role at awww in
+`lib/roles.lua` changed nothing at all while the rice still pinned it to the
+pill — the override working exactly as designed, which is what made it hard to
+see. Name only what the rice actually changes.
 
 **Nothing in the resolution is fatal.** A missing state file, a stale name, a
 `rice.lua` that does not parse — each falls back and warns, because this is
