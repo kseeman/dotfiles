@@ -488,8 +488,15 @@ worse. Diffing against upstream means re-cloning at the recorded commit.
 It is one bar and also most of the desktop: media with now-playing, calendar,
 wallpaper picker, clipboard history, mixer, network, bluetooth, tray,
 **notifications**, launcher and power menu. That is why `config/startup.lua`
-starts so little else — waybar, a wallpaper setter and the wifi/bluetooth
-applets are all things the pill already is.
+starts so little else — waybar and the wifi/bluetooth applets are all things
+the pill already is.
+
+**The wallpaper is the exception, and it reads like one.** The pill owns the
+*picker*, not the wallpaper: `Walls.qml` reads the state files and applies only
+when a thumb is chosen. So `wallpaper` is a role like any other, held by
+`providers/awww.lua`, and it is started from the roles loop. It was held by the
+pill for a while, which looked filled and meant nothing restored a wallpaper at
+login — the whole desktop came up bare after a reboot.
 
 **dunst needs no masking.** The pill claims `org.freedesktop.Notifications` at
 startup, only one process may own that name, so dunst is never D-Bus activated
@@ -619,6 +626,14 @@ through a metatable, which is why `start_commands()` walks the *defaults* table
 — `pairs()` does not see inherited keys, so iterating the active table would
 shrink the desktop to whatever roles the rice happened to mention.
 
+**So a rice must not restate a default.** `violet` used to spell out the whole
+providers table, on the grounds that it was the rice the defaults were written
+from and seeing the set once was worth more than brevity. It is not: that is a
+second copy, and it drifted. Pointing the `wallpaper` role at awww in
+`lib/roles.lua` changed nothing at all while the rice still pinned it to the
+pill — the override working exactly as designed, which is what made it hard to
+see. Name only what the rice actually changes.
+
 **Nothing in the resolution is fatal.** A missing state file, a stale name, a
 `rice.lua` that does not parse — each falls back and warns, because this is
 runtime state a switch can leave half-written. That is deliberately the opposite
@@ -733,12 +748,29 @@ machine that already has one.**
 two `ignore_*_inhibit` settings, because it rewrites the whole file and
 upstream's version omits them.
 
+**A script reached through the scripts symlink must resolve its own path with
+`pwd -P`.** `~/.config/hypr/scripts` is a symlink into this repo and is the path
+every caller in vendored code and in `hypridle.conf` uses, but bash's `cd` is
+logical: `cd "$(dirname "$0")" && pwd` hands back the symlink, so the
+`%/quickshell/scripts` strip never fires and the desktop directory comes out
+wrong. Both `lock.sh` and `wallpaper.sh` had this.
+
+It failed loudly in one and silently in the other, which is the part worth
+remembering. `lock.sh` resolves the `lock` role through `package.path`, so a
+wrong directory meant `lib.roles` was not found, the command came back empty and
+the script exited 1 — **no idle lock, no lock from the power menu, and no lock
+before sleep.** `wallpaper.sh` only reads knobs that way, so every lookup
+returned empty and each one fell back to its built-in default: a rice setting
+`wallpaper_fit` or `wallpaper_fill` was quietly ignored for anything set from
+the picker.
+
 #### The wallpaper setter
 
 `quickshell/scripts/wallpaper.sh` implements the contract the vendored
 `Walls.qml` expects — `resolve` records the folder, `set <path> [output]`
 applies it, and two `ricelin-wallpaper*` state files are read back. The names
-are theirs because the paths are fixed in code we did not write.
+are theirs because the paths are fixed in code we did not write. `restore` is
+ours, and is what the `wallpaper` role runs at session start.
 
 Upstream's is ten kilobytes of shuffle bags, video wallpapers, per-output
 still-frame extraction, a matugen call and a terminal reload. This does the two
@@ -824,6 +856,36 @@ The daemon is started on demand, so the first wallpaper of a session works
 whether or not anything else has run. The current wallpaper is recorded only
 after `awww` succeeds, and only for a whole-desktop change — a per-output set
 leaves no single current.
+
+#### Restoring it at login
+
+`restore` starts the daemon and then checks whether every output is already
+showing what `set` would have put there — the recorded image, or the
+pre-rendered frame for an output the fit workaround covers. If it is, it does
+nothing; otherwise it sets the recorded wallpaper properly.
+
+**Starting the daemon is most of the fix.** awww-daemon restores its own
+per-output cache as it comes up (`--no-cache` opts out), so the screen is
+usually dressed before the check runs. The daemon was previously started only
+by `set`, so it existed only once something had already changed the wallpaper,
+and never at a fresh login.
+
+**It deliberately does not run `awww restore`.** That replays awww's own cached
+`(resize, path)` pair per output rather than asking this script what the
+wallpaper should look like, and the pair can be one this script never wrote: a
+`DP-1` entry of `no` plus the *original* image was observed here, and restoring
+it put the unpadded original on the ultrawide. An image file, the right file,
+the wrong picture. How that pair got written was never established, which is
+the reason not to depend on it being right.
+
+**So the check asks whether the picture is correct, not whether one is up.** It
+reuses the same `hits_fit_bug` the setting path uses, so the two cannot disagree
+about which outputs expect a frame. A wallpaper that was moved or deleted has no
+restore, and `cmd_current` already refuses a path that no longer exists — the
+background stays bare, which says so, rather than another pick hiding it.
+
+The cost of being wrong is one re-set: a matugen run and possibly one frame
+render, at login only, and only when something is actually out of place.
 
 **Not ported:** `wallpaper-search.sh` scrapes moewalls.com. The surface's search
 does nothing until that is a decision rather than something inherited.
