@@ -2,8 +2,11 @@
 --
 -- hyde-shell screenshot took a mode letter and dispatched to grimblast, which
 -- HyDE vendors and which therefore disappears with it. hyprshot is packaged,
--- already installed, and covers three of the four modes directly; it saves to a
--- folder and copies to the clipboard in one step.
+-- already installed, and covers three of the four modes directly.
+--
+-- Every capture then opens in satty, as HyDE's did: the shot is on the
+-- clipboard straight away, and the file is written only when it is saved from
+-- satty, so a throwaway shot leaves nothing behind in the folder.
 local mod = "SUPER"
 
 -- Resolved in Lua rather than left to the shell, so the folder is the same one
@@ -11,8 +14,21 @@ local mod = "SUPER"
 local pictures = os.getenv("XDG_PICTURES_DIR") or (os.getenv("HOME") .. "/Pictures")
 local SHOTS = pictures .. "/Screenshots"
 
+-- Captured to a temporary file rather than piped, so that a cancelled region
+-- selection can be told apart and opens nothing. It is checked for a PNG
+-- header rather than for being non-empty: cancelling leaves the capture
+-- command to fail however it likes, and anything it prints is not an image.
+local function annotate(capture)
+    return hl.dsp.exec_cmd(
+        "mkdir -p '" .. SHOTS .. "' && t=$(mktemp --suffix=.png) && " .. capture .. " > \"$t\""
+            .. " && head -c 8 \"$t\" | grep -q PNG && wl-copy < \"$t\""
+            .. " && satty -f \"$t\" -o '" .. SHOTS .. "/%Y-%m-%d-%H%M%S.png' --copy-command wl-copy"
+            .. "; rm -f \"$t\""
+    )
+end
+
 local function hyprshot(args)
-    return hl.dsp.exec_cmd("hyprshot -o '" .. SHOTS .. "' " .. args)
+    return annotate("hyprshot --raw " .. args)
 end
 
 hl.bind(mod .. " + P", hyprshot("-m region"), { desc = "screenshot: region" })
@@ -24,16 +40,8 @@ hl.bind(mod .. " + CONTROL + P", hyprshot("-m region --freeze"), { desc = "scree
 hl.bind(mod .. " + ALT + P", hyprshot("-m output"), { desc = "screenshot: this monitor" })
 
 -- hyprshot has no every-monitor mode, so the whole layout goes through grim,
--- which captures all outputs when given no geometry. Saved and copied by hand
--- to match what the other three do.
-hl.bind(
-    "Print",
-    hl.dsp.exec_cmd(
-        "mkdir -p '" .. SHOTS .. "' && f=\"" .. SHOTS .. "/$(date +%Y-%m-%d-%H%M%S)_all.png\""
-            .. " && grim \"$f\" && wl-copy < \"$f\""
-    ),
-    { desc = "screenshot: all monitors" }
-)
+-- which captures all outputs when given no geometry.
+hl.bind("Print", annotate("grim -"), { desc = "screenshot: all monitors" })
 
 -- Picks a colour from anywhere on screen and puts the hex on the clipboard.
 hl.bind(mod .. " + SHIFT + P", hl.dsp.exec_cmd("hyprpicker -an"), { desc = "colour picker" })
