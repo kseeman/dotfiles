@@ -90,6 +90,7 @@ xdg-desktop-portal-gtk
 grim
 slurp
 hyprshot
+satty
 hyprpicker
 hyprsunset
 cliphist
