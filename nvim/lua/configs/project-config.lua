@@ -5,6 +5,7 @@
 --   -- ~/.config/dotfiles/nvim/projects/<repo-dir-name>.lua
 --   return {
 --     maven_test_args = { '-Dsome.property=none' },
+--     js_test_cmd = 'yarn workspace {workspace} test {file}',
 --   }
 --
 -- Looked up from the path being worked on, not the cwd, so one nvim spanning

@@ -72,6 +72,23 @@ local test_configs = {
     end,
   },
 
+  -- A project's own test command, from its `js_test_cmd` setting (see
+  -- configs/project-config). For a repo whose tests go through its own scripts,
+  -- which no file on disk describes well enough to pick a runner from. Only a
+  -- file and the whole workspace: running one test or attaching a debugger
+  -- depends on what those scripts forward, which this cannot know.
+  project = {
+    pattern = function(filepath)
+      return M.js_runner(filepath) == 'project'
+    end,
+    run_file = function(filepath)
+      return M.project_cmd(filepath, true)
+    end,
+    run_all = function()
+      return M.project_cmd(vim.fn.expand('%:p'), false)
+    end,
+  },
+
   -- Jest, run from the package that owns the test so its own config is used.
   -- "Debug" waits for a debugger on --inspect-brk; attach with the
   -- `Attach to Node Process` DAP configuration.
@@ -262,6 +279,10 @@ function M.js_runner(filepath)
     return nil
   end
 
+  if require('configs.project-config').get(filepath).js_test_cmd then
+    return 'project'
+  end
+
   local head = vim.fn.filereadable(filepath) == 1 and table.concat(vim.fn.readfile(filepath, '', 50), '\n') or ''
   if head:match("['\"]@playwright/test['\"]") then
     return 'playwright'
@@ -280,6 +301,37 @@ function M.js_runner(filepath)
     end
   end
   return 'playwright'
+end
+
+-- Fill in a project's `js_test_cmd`. {workspace} is the "name" of the nearest
+-- project.json or package.json above the test file, and {file} is the file
+-- relative to that directory, which is where `yarn workspace` runs a script.
+-- Run from the git root so a workspace command resolves from anywhere. With
+-- `with_file` false, {file} is dropped to run the whole workspace.
+function M.project_cmd(filepath, with_file)
+  local template = require('configs.project-config').get(filepath).js_test_cmd
+  local dir = vim.fs.root(filepath, { 'project.json', 'package.json' })
+
+  local name
+  for _, manifest in ipairs({ 'project.json', 'package.json' }) do
+    local path = dir and dir .. '/' .. manifest
+    if not name and path and vim.fn.filereadable(path) == 1 then
+      local ok, data = pcall(vim.json.decode, table.concat(vim.fn.readfile(path), '\n'))
+      name = ok and type(data) == 'table' and data.name or nil
+    end
+  end
+
+  if template:find('{workspace}', 1, true) and not name then
+    vim.notify('js_test_cmd: no project.json or package.json with a "name" above ' .. filepath,
+      vim.log.levels.WARN)
+    return nil
+  end
+
+  local file = with_file and vim.fn.shellescape(vim.fs.relpath(dir, filepath)) or ''
+  local cmd = template
+    :gsub('{workspace}', function() return vim.fn.shellescape(name or '') end)
+    :gsub('{file}', function() return file end)
+  return 'cd ' .. vim.fn.shellescape(vim.fs.root(filepath, '.git')) .. ' && ' .. vim.trim(cmd)
 end
 
 -- Run a JS test command from the directory of the package that owns the file,
@@ -373,6 +425,10 @@ end
 -- command, so `%` and `#` get filename expansion, and Maven's
 -- `-Dtest=Class#method` became `-Dtest=Class<alternate file>method`.
 function M.open_terminal(cmd)
+  -- A builder that could not produce a command has already said why.
+  if not cmd then
+    return
+  end
   vim.cmd('new')
   vim.fn.jobstart(cmd, { term = true })
   vim.cmd('startinsert')
@@ -494,6 +550,11 @@ function M.debug_current_test()
     return
   end
   
+  if not config.debug_file then
+    vim.notify("Debugging not supported for this test type: " .. test_type, vim.log.levels.WARN)
+    return
+  end
+
   local cmd = config.debug_file(filepath)
   M.open_terminal(cmd)
 end
@@ -507,6 +568,11 @@ function M.debug_all_tests()
     return
   end
   
+  if not config.debug_all then
+    vim.notify("Debugging not supported for this test type: " .. test_type, vim.log.levels.WARN)
+    return
+  end
+
   local cmd = config.debug_all()
   M.open_terminal(cmd)
 end
