@@ -47,57 +47,11 @@ done
 # Helpers
 # -----------------------------------------------------------------------------
 
-info() {
-    echo ""
-    echo "==> $1"
-}
+# info, run and link_config, shared with uninstall.sh and the desktop repo.
+source "$DOTFILES_DIR/lib/install.sh"
 
-run() {
-    if [[ "$DRY_RUN" == true ]]; then
-        echo "[dry-run] $*"
-    else
-        eval "$@"
-    fi
-}
-
-link_config() {
-    local source="$1"
-    local target="$2"
-
-    if [[ ! -e "$source" ]]; then
-        echo "Missing source: $source"
-        return
-    fi
-
-    # Anything already at the target is moved aside unless it is this link
-    # already, including someone's own symlink (e.g. ~/.zshrc into another
-    # dotfiles repo), which `ln -sfn` would otherwise replace without a trace.
-    # `-L` as well as `-e`, so a dangling symlink counts as something there.
-    local ours=false
-    if [[ -L "$target" ]]; then
-        local current
-        current="$(readlink "$target")"
-        if [[ "$current" == "$source" || "$current" == "$HOME/.dotfiles/"* || "$current" == "$DOTFILES_DIR/"* ]]; then
-            ours=true
-        fi
-    fi
-
-    if [[ "$ours" == false ]] && [[ -e "$target" || -L "$target" ]]; then
-        # <name>.pre-dotfiles is only ever the original, from before the first
-        # install -- what uninstall.sh puts back. Something appearing there
-        # after that (an app replacing the link with a file) gets a timestamped
-        # backup instead, so the original is never overwritten.
-        local backup="${target}.pre-dotfiles"
-        if [[ -e "$backup" || -L "$backup" ]]; then
-            backup="${target}.backup.$(date +%Y%m%d%H%M%S)"
-        fi
-
-        info "Backing up existing $(basename "$target") to $(basename "$backup")"
-        run "mv '$target' '$backup'"
-    fi
-
-    run "ln -sfn '$source' '$target'"
-}
+# Links are made through ~/.dotfiles, but the checkout's real path counts too.
+REPO_ROOTS=("$HOME/.dotfiles" "$DOTFILES_DIR")
 
 # settings.json is the one file in the Claude harness that Claude Code writes to
 # itself — plugin enablement, auto-mode classifier state, absolute marketplace

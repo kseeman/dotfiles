@@ -5,7 +5,7 @@
 # -----------------------------------------------------------------------------
 #
 # Sourced (not executed) by ../../install.sh, so DOTFILES_DIR, DOTFILES_DISTRO,
-# DRY_RUN, the info()/run() helpers and the resolved XDG_CONFIG / XDG_BIN are
+# DRY_RUN, the lib/install.sh helpers and the resolved XDG_CONFIG / XDG_BIN are
 # already defined here.
 #
 # Contract with the shared installer:
@@ -29,62 +29,11 @@ if ! command -v pacman &>/dev/null; then
 fi
 
 # -----------------------------------------------------------------------------
-# Helpers
+# Packages
 # -----------------------------------------------------------------------------
 
-# Manifests are one package per line with # comments and blank lines allowed;
-# this flattens them to a space-separated list.
-read_manifest() {
-    sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$1" | tr '\n' ' '
-}
-
-# -----------------------------------------------------------------------------
-# Repository packages
-# -----------------------------------------------------------------------------
-
-PACMAN_MANIFEST="$DOTFILES_DIR/os/linux/pacman.txt"
-
-if [[ -f "$PACMAN_MANIFEST" ]]; then
-    packages="$(read_manifest "$PACMAN_MANIFEST")"
-
-    if [[ -n "${packages// /}" ]]; then
-        info "Installing pacman packages..."
-
-        # --needed skips anything already present, so this is safe to re-run.
-        # Left interactive on purpose: pacman shows what it's about to do.
-        run "sudo pacman -S --needed $packages"
-    fi
-else
-    echo "No pacman.txt found, skipping repository packages."
-fi
-
-# -----------------------------------------------------------------------------
-# AUR packages
-# -----------------------------------------------------------------------------
-
-AUR_MANIFEST="$DOTFILES_DIR/os/linux/aur.txt"
-
-if [[ -f "$AUR_MANIFEST" ]]; then
-    aur_packages="$(read_manifest "$AUR_MANIFEST")"
-
-    if [[ -n "${aur_packages// /}" ]]; then
-        if command -v paru &>/dev/null; then
-            aur_helper="paru"
-        elif command -v yay &>/dev/null; then
-            aur_helper="yay"
-        else
-            aur_helper=""
-        fi
-
-        if [[ -n "$aur_helper" ]]; then
-            info "Installing AUR packages with $aur_helper..."
-
-            run "$aur_helper -S --needed $aur_packages"
-        else
-            echo "No AUR helper (paru/yay) found, skipping: $aur_packages"
-        fi
-    fi
-fi
+install_pacman_manifest "$DOTFILES_DIR/os/linux/pacman.txt"
+install_aur_manifest "$DOTFILES_DIR/os/linux/aur.txt"
 
 # -----------------------------------------------------------------------------
 # NVM location

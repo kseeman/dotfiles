@@ -89,60 +89,11 @@ done
 # Helpers
 # -----------------------------------------------------------------------------
 
-info() {
-    echo ""
-    echo "==> $1"
-}
-
-run() {
-    if [[ "$DRY_RUN" == true ]]; then
-        echo "[dry-run] $*"
-    else
-        eval "$@"
-    fi
-}
+# info, run and the link scan, shared with install.sh and the desktop repo.
+source "$DOTFILES_DIR/lib/install.sh"
 
 # Links are made through ~/.dotfiles, but accept the checkout's real path too.
-points_into_repo() {
-    local target
-
-    target="$(readlink "$1")" || return 1
-
-    [[ "$target" == "$HOME/.dotfiles/"* || "$target" == "$DOTFILES_DIR/"* ]]
-}
-
-# What to put back at a path: its .pre-dotfiles original, or failing that the
-# newest timestamped backup (timestamps sort lexically). Other backups stay.
-backup_for() {
-    if [[ -e "$1.pre-dotfiles" || -L "$1.pre-dotfiles" ]]; then
-        printf '%s' "$1.pre-dotfiles"
-        return
-    fi
-
-    compgen -G "$1.backup.*" | sort | tail -n 1 || true
-}
-
-# Every symlink into the repo, in the places install.sh and the OS installers
-# link to. ~/.config goes two deep for ~/.config/<app>/<file>; symlinked
-# directories such as ~/.config/nvim are not followed, so nothing inside the
-# repo is listed. ~/.dotfiles itself is handled last, separately.
-repo_links() {
-    {
-        find "$HOME" -maxdepth 1 -type l 2>/dev/null || true
-        find "$XDG_CONFIG" -maxdepth 2 -type l 2>/dev/null || true
-        find "$XDG_BIN" -maxdepth 1 -type l 2>/dev/null || true
-        find "$HOME/.claude" -maxdepth 1 -type l 2>/dev/null || true
-    } | sort -u | while IFS= read -r link; do
-        [[ "$link" == "$HOME/.dotfiles" ]] && continue
-
-        # An `if`, not `&&`: a failed test as the loop's last command would
-        # become the function's status, and set -e would stop the script
-        # whenever the last link scanned is not ours.
-        if points_into_repo "$link"; then
-            printf '%s\n' "$link"
-        fi
-    done
-}
+REPO_ROOTS=("$HOME/.dotfiles" "$DOTFILES_DIR")
 
 # -----------------------------------------------------------------------------
 # Start
@@ -170,26 +121,7 @@ if [[ -z "$links" ]]; then
     echo "None found."
 fi
 
-while IFS= read -r link; do
-    [[ -n "$link" ]] || continue
-
-    run "rm '$link'"
-
-    backup="$(backup_for "$link")"
-
-    if [[ "$DRY_RUN" == true ]]; then
-        verb_restore="Would restore"; verb_remove="Would remove"
-    else
-        verb_restore="Restored"; verb_remove="Removed"
-    fi
-
-    if [[ -n "$backup" ]]; then
-        run "mv '$backup' '$link'"
-        echo "$verb_restore ${link/#$HOME/$TILDE} from $(basename "$backup")"
-    else
-        echo "$verb_remove ${link/#$HOME/$TILDE}"
-    fi
-done <<< "$links"
+remove_repo_links "$links"
 
 # -----------------------------------------------------------------------------
 # Claude Code settings

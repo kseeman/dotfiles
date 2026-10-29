@@ -113,6 +113,7 @@ per platform lives under `os/<os>/`.
 
 ```
 lib/os.sh             OS detection, shared by the installer and zsh
+lib/install.sh        Installer helpers, shared by both installers
 install.sh            Shared install steps; dispatches to the OS installer
 zsh/                  Shared shell configuration
 kitty/ fastfetch/     Config sources (linked per-OS)

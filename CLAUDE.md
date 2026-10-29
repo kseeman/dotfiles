@@ -95,6 +95,7 @@ The repo supports macOS (Apple Silicon) and Arch-based Linux from one tree. Shar
 
 ```
 lib/os.sh              OS detection, shared by install.sh (bash) and zsh
+lib/install.sh         Installer helpers (bash): linking, the link scan, manifests
 install.sh             Shared install steps; dispatches to the OS installer
 zsh/                   Shared shell configuration
 kitty/ fastfetch/      Shared config sources (linked per-OS, see below)
@@ -1096,6 +1097,14 @@ earlier install/uninstall cycle. The one obligation it creates: **a new link out
 those locations must be added to `repo_links()`**, or uninstalling leaves it
 dangling.
 
+All of that lives in `lib/install.sh` — `info`, `run`, `link_config`,
+`repo_links`, `remove_repo_links` and the pacman/AUR manifest installers —
+sourced by both installers and the OS installers. **It is also an interface:**
+the desktop repo sources `~/.dotfiles/lib/install.sh` instead of keeping a
+copy, so renaming a function there breaks an installer this repo cannot see.
+What counts as "this repo's" link is the `REPO_ROOTS` array each caller sets,
+which is how one scan serves both repos.
+
 `~/.claude/settings.json` is not restored from a backup, since what it held
 before the merge cannot be told from the backups, which the merge also writes.
 Only the registrations for this repo's hook scripts are removed, because they
@@ -1110,7 +1119,7 @@ run for real, it unlinks the machine it runs on.
 2. Have the installer install packages, set `NVM_SH`, and optionally define `os_link_configs()`
 3. Extend `dotfiles_detect_os()` / `dotfiles_detect_distro()` in `lib/os.sh`
 
-The OS installer is **sourced, not executed**, so it inherits `DOTFILES_DIR`, `DRY_RUN`, `info()`, `run()`, and `link_config()` — and hands `NVM_SH` back.
+The OS installer is **sourced, not executed**, so it inherits `DOTFILES_DIR`, `DRY_RUN` and the `lib/install.sh` helpers — `info()`, `run()`, `link_config()`, `install_pacman_manifest()` — and hands `NVM_SH` back.
 
 ## Profile System Architecture
 
