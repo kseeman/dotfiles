@@ -5,7 +5,8 @@ M.profiles = {
   "default",
   "dotnet",
   "java",
-  "python"
+  "python",
+  "node"
 }
 
 -- Detect operating system

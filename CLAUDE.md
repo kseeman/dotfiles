@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Purpose
 
-This is a personal dotfiles repository covering Neovim, zsh, and terminal configuration across macOS and Linux. The Neovim configuration is built on NvChad v2.5 and features a custom multi-profile system that loads different plugin sets and configurations based on the development environment (default, .NET, Java, or Python).
+This is a personal dotfiles repository covering Neovim, zsh, and terminal configuration across macOS and Linux. The Neovim configuration is built on NvChad v2.5 and features a custom multi-profile system that loads different plugin sets and configurations based on the development environment (default, .NET, Java, Python, or Node).
 
 ## Change workflow
 
@@ -1348,9 +1348,17 @@ In the python profile, `.py` files format on save through `format_on_save`. Note
 
 NvChad loads lspconfig on `User FilePost`, which only fires after `UIEnter`, so under `--headless` no LSP ever attaches unless the event is fired by hand. A test run can still rewrite the current profile's lockfile — the lockfile lives in the config dir, so pointing `XDG_DATA_HOME` elsewhere does not spare it — but only that profile's, so `git diff nvim/` after testing shows one file at most. See **Lockfiles are per profile** below.
 
+## Node Profile
+
+JavaScript/TypeScript. Most of it was already shared — `ts_ls` and the `pwa-node` DAP adapter serve every profile — so the profile mostly supplies the Mason tools those expect, plus neotest with the vitest and jest adapters. vitest is listed first: it only claims files in a project with vitest in its `package.json`, so jest gets the rest.
+
+`eslint` is in the shared `servers` list, like pyright and ruff. It only attaches where an eslint config exists.
+
+**Format on save is prettierd, and only where the project configures prettier.** `configs/conform.lua` sets `require_cwd` on prettierd, so a project with no `.prettierrc*`, `prettier.config.*` or `"prettier"` key in `package.json` is never restyled to prettier's defaults. Saving formats only in the node profile, the same split as python; in other profiles prettierd is still `<leader>fm`'s formatter for those filetypes, which falls back to the LSP where there is no prettier config.
+
 ## Lockfiles are per profile
 
-`nvim/lazy-lock.<profile>.json` — one each for `default`, `dotnet`, `java` and `python`. All four are tracked. There is deliberately no `lazy-lock.json`.
+`nvim/lazy-lock.<profile>.json` — one each for `default`, `dotnet`, `java`, `python` and `node`. All five are tracked. There is deliberately no `lazy-lock.json`.
 
 **A single lockfile cannot work with this profile system.** `lazy/manage/lock.lua` loads the lockfile and then drops every entry not in the *current* spec:
 
@@ -1383,7 +1391,7 @@ Language servers and debuggers are installed via Mason:
 
 - **Java**: `jdtls`, `java-debug-adapter`
 - **.NET**: `omnisharp`, `netcoredbg`
-- **TypeScript**: `typescript-language-server`, `js-debug-adapter`
+- **TypeScript**: `typescript-language-server`, `js-debug-adapter`, `eslint-lsp`, `prettierd` (all four via the node profile's `ensure_installed`)
 - **Python**: `pyright`, `ruff`, `debugpy` (all three via the profile's `ensure_installed`)
 
 Install missing packages: `:Mason` then search and press `i` to install.

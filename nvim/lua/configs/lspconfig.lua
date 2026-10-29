@@ -37,7 +37,7 @@ local on_attach = function(client, bufnr)
 end
 
 -- Note: jdtls is NOT included here because nvim-jdtls plugin manages it separately
-local servers = { "html", "cssls", "omnisharp", "ts_ls", "js_ls", "clangd", "pyright", "ruff" }
+local servers = { "html", "cssls", "omnisharp", "ts_ls", "js_ls", "eslint", "clangd", "pyright", "ruff" }
 
 -- Wrap a server's on_attach so ours runs and lspconfig's own still does.
 -- vim.lsp.config() merges with "force", so setting on_attach outright replaced
