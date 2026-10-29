@@ -1205,7 +1205,8 @@ The test runner (`nvim/lua/configs/test-runner.lua`) is a custom implementation 
 
 ### Supported Test Types
 
-- **Playwright/Jest** (TypeScript/JavaScript): Detects `*.spec.ts`, `*.test.ts` files
+- **Playwright, Jest, Vitest** (TypeScript/JavaScript): `*.{spec,test}.{ts,js}` files. One naming scheme serves all three, so `js_runner()` picks per file: a file importing `@playwright/test` is Playwright's (it has no globals, so its tests always import `test`); otherwise the nearest `package.json` decides — vitest, then jest, then Playwright. Before this every such file ran under `npx playwright test`, and a jest file failed with `describe is not defined`.
+  - Jest and vitest run from that package's directory and are given the file **relative to it**. Both filter by the path rather than open it — jest as a regex, vitest as a substring of the resolved path — so an absolute path misses through a symlinked checkout.
 - **Java**: Detects `*Test.java`, `*Tests.java`, `*IT.java` files, generates Maven/Gradle commands
   - Maven file/single-test runs start from the reactor root (topmost `pom.xml` in the repo) with `-pl <module> -am`, so sibling modules compile from source rather than stale `~/.m2` jars. They pass `-DskipTests=false`, plus the project's `maven_test_args` (see **Per-project settings**) for a POM that filters tests out by a property (e.g. excluded JUnit tags).
 - **.NET**: Detects `*Test.cs`, `*Tests.cs` files, uses `dotnet test --filter`

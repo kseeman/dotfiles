@@ -2,10 +2,11 @@ local M = {}
 
 -- Test detection and command configuration
 local test_configs = {
-  -- Playwright (TypeScript/JavaScript)
+  -- Playwright (TypeScript/JavaScript). The three JS runners share one file
+  -- naming scheme, so M.js_runner decides which of them owns a file.
   playwright = {
     pattern = function(filepath)
-      return filepath:match("%.spec%.ts$") or filepath:match("%.test%.ts$") or filepath:match("%.spec%.js$") or filepath:match("%.test%.js$")
+      return M.js_runner(filepath) == 'playwright'
     end,
     run_file = function(filepath)
       local config = M.get_playwright_config()
@@ -68,6 +69,59 @@ local test_configs = {
       table.insert(args, '--grep')
       table.insert(args, '"' .. test_name .. '"')
       return table.concat(args, ' ')
+    end,
+  },
+
+  -- Jest, run from the package that owns the test so its own config is used.
+  -- "Debug" waits for a debugger on --inspect-brk; attach with the
+  -- `Attach to Node Process` DAP configuration.
+  jest = {
+    pattern = function(filepath)
+      return M.js_runner(filepath) == 'jest'
+    end,
+    run_file = function(filepath)
+      return M.js_cmd(filepath, 'npx jest ' .. M.js_file(filepath))
+    end,
+    run_all = function()
+      return M.js_cmd(vim.fn.expand('%:p'), 'npx jest')
+    end,
+    debug_file = function(filepath)
+      return M.js_cmd(filepath, M.jest_debug(filepath) .. ' ' .. M.js_file(filepath))
+    end,
+    debug_all = function()
+      local filepath = vim.fn.expand('%:p')
+      return M.js_cmd(filepath, M.jest_debug(filepath))
+    end,
+    run_single = function(filepath, test_name)
+      return M.js_cmd(filepath, 'npx jest ' .. M.js_file(filepath) .. ' -t ' .. vim.fn.shellescape(test_name))
+    end,
+    debug_single = function(filepath, test_name)
+      return M.js_cmd(filepath, M.jest_debug(filepath) .. ' ' .. M.js_file(filepath) .. ' -t ' .. vim.fn.shellescape(test_name))
+    end,
+  },
+
+  -- Vitest. `run` rather than the default watch mode, which never exits.
+  vitest = {
+    pattern = function(filepath)
+      return M.js_runner(filepath) == 'vitest'
+    end,
+    run_file = function(filepath)
+      return M.js_cmd(filepath, 'npx vitest run ' .. M.js_file(filepath))
+    end,
+    run_all = function()
+      return M.js_cmd(vim.fn.expand('%:p'), 'npx vitest run')
+    end,
+    debug_file = function(filepath)
+      return M.js_cmd(filepath, 'npx vitest run --inspect-brk --no-file-parallelism ' .. M.js_file(filepath))
+    end,
+    debug_all = function()
+      return M.js_cmd(vim.fn.expand('%:p'), 'npx vitest run --inspect-brk --no-file-parallelism')
+    end,
+    run_single = function(filepath, test_name)
+      return M.js_cmd(filepath, 'npx vitest run ' .. M.js_file(filepath) .. ' -t ' .. vim.fn.shellescape(test_name))
+    end,
+    debug_single = function(filepath, test_name)
+      return M.js_cmd(filepath, 'npx vitest run --inspect-brk --no-file-parallelism ' .. M.js_file(filepath) .. ' -t ' .. vim.fn.shellescape(test_name))
     end,
   },
 
@@ -196,6 +250,69 @@ function M.get_playwright_config()
     return playwright_config
   end
   return nil
+end
+
+-- Which runner owns a JS/TS test file. Playwright has no globals, so its tests
+-- always import `test` from @playwright/test; a file that does is Playwright's.
+-- Otherwise the nearest package.json decides. Without this every *.test.ts ran
+-- under `npx playwright test`, and a jest/vitest file failed on load with
+-- "describe is not defined".
+function M.js_runner(filepath)
+  if not (filepath:match("%.spec%.[jt]s$") or filepath:match("%.test%.[jt]s$")) then
+    return nil
+  end
+
+  local head = vim.fn.filereadable(filepath) == 1 and table.concat(vim.fn.readfile(filepath, '', 50), '\n') or ''
+  if head:match("['\"]@playwright/test['\"]") then
+    return 'playwright'
+  end
+
+  local root = vim.fs.root(filepath, 'package.json')
+  if root then
+    local ok, data = pcall(vim.json.decode, table.concat(vim.fn.readfile(root .. '/package.json'), '\n'))
+    if ok and type(data) == 'table' then
+      local deps = vim.tbl_extend('force', data.dependencies or {}, data.devDependencies or {})
+      if deps.vitest then
+        return 'vitest'
+      elseif deps.jest then
+        return 'jest'
+      end
+    end
+  end
+  return 'playwright'
+end
+
+-- Run a JS test command from the directory of the package that owns the file,
+-- so a monorepo package's jest/vitest config is found whatever nvim's cwd is.
+function M.js_cmd(filepath, cmd)
+  local root = vim.fs.root(filepath, 'package.json')
+  if root then
+    return 'cd ' .. vim.fn.shellescape(root) .. ' && ' .. cmd
+  end
+  return cmd
+end
+
+-- The test file as the runner should be given it: relative to the package
+-- root, and quoted. Both runners filter by it rather than open it -- jest as
+-- a regex, vitest as a substring of the resolved path -- so an absolute path
+-- misses whenever the checkout is reached through a symlink, and jest
+-- misreads one containing regex characters.
+function M.js_file(filepath)
+  local root = vim.fs.root(filepath, 'package.json')
+  return vim.fn.shellescape(root and vim.fs.relpath(root, filepath) or filepath)
+end
+
+-- Jest under the inspector. npx cannot pass --inspect-brk to jest's own node
+-- process, so the bin is run directly, found upward for hoisted workspaces.
+-- --runInBand keeps the tests in that one process, where the debugger is.
+function M.jest_debug(filepath)
+  for dir in vim.fs.parents(filepath) do
+    local bin = dir .. '/node_modules/.bin/jest'
+    if vim.fn.executable(bin) == 1 then
+      return 'node --inspect-brk ' .. vim.fn.shellescape(bin) .. ' --runInBand'
+    end
+  end
+  return 'node --inspect-brk node_modules/.bin/jest --runInBand'
 end
 
 -- Helper for Maven multi-module builds. The nearest pom.xml above the test
