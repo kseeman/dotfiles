@@ -18,14 +18,14 @@
 -- below are tokyonight's, kept verbatim and on purpose.
 --
 -- The values arrive through $XDG_CACHE_HOME/dotfiles/theme/nvim.lua, written by
--- os/linux/desktop/render-theme.lua. This file is tracked and that one is not,
+-- the desktop repo (kseeman/desktop). This file is tracked and that one is not,
 -- which is the point: no colour of the desktop's is written down here.
 
 local M = {}
 
 -- tokyonight's own structural values, used whole when there is no desktop
--- palette to read: a Mac, a fresh machine, or a Linux box where render-theme
--- has not run yet. A floor rather than a theme -- it is what this file looked
+-- palette to read: a Mac, a fresh machine, or a Linux box where the desktop
+-- has not rendered yet. A floor rather than a theme -- it is what this file looked
 -- like before, so falling back changes nothing visible.
 local FLOOR = {
   root = "#16161e",

@@ -14,7 +14,6 @@ set -euo pipefail
 #   scripts, which stop existing once ~/.claude/hooks is unlinked. The rest of
 #   the merged settings stay: what they were before the merge cannot be told
 #   from here, and the installer's backups are left for restoring by hand.
-# - The login session entry is removed, since a stale one fails a login.
 #
 # Packages, Oh My Zsh, Node versions and ~/.config/dotfiles are left alone and only
 # reported: they may have been there before, or be in use since. The tool
@@ -36,7 +35,7 @@ REMOVE_TOOLS=false
 # XDG base directories
 # -----------------------------------------------------------------------------
 
-# Resolved rather than assumed, the same way os/linux/desktop/snapshot.sh does.
+# Resolved rather than assumed, the same way the desktop repo's snapshot.sh does.
 # This machine has them all at their defaults, so hardcoding ~/.config would
 # work by coincidence -- and coincidence is exactly how `dev` broke, assuming
 # ~/.zshrc while ZDOTDIR pointed at ~/.config/zsh.
@@ -181,32 +180,6 @@ if [[ -f "$settings" && ! -L "$settings" ]]; then
 
     echo "Its permissions are left as merged. The installer's backups are"
     echo "~/.claude/settings.json.backup.*, if you want an earlier version back."
-fi
-
-# -----------------------------------------------------------------------------
-# The session entry (Linux)
-# -----------------------------------------------------------------------------
-
-# Outside $HOME, installed with sudo, and therefore missed by every scan above.
-#
-# Worth more care than a dangling symlink: what is left behind is an entry at
-# the login screen pointing at a config that no longer exists, so choosing it
-# fails the login rather than doing nothing. Someone would meet that at a
-# greeter, which is the worst place to debug anything.
-#
-# Only removed when its Exec still names this repo's init.lua. A hand-edited
-# entry, or one another tool happens to have put at the same path, is left and
-# reported.
-session_entry="/usr/share/wayland-sessions/hyprland-dotfiles.desktop"
-
-if [[ -f "$session_entry" ]]; then
-    if grep -q "$DOTFILES_DIR/os/linux/desktop/init.lua" "$session_entry" 2> /dev/null \
-        || grep -q "\.dotfiles/os/linux/desktop/init.lua" "$session_entry" 2> /dev/null; then
-        info "Removing the session entry..."
-        run "sudo rm '$session_entry'"
-    else
-        echo "Left $session_entry: its Exec does not name this repo."
-    fi
 fi
 
 # -----------------------------------------------------------------------------

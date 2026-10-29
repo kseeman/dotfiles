@@ -14,7 +14,7 @@ INSTALL_CLAUDE=true
 # XDG base directories
 # -----------------------------------------------------------------------------
 
-# Resolved rather than assumed, the same way os/linux/desktop/snapshot.sh does.
+# Resolved rather than assumed, the same way the desktop repo's snapshot.sh does.
 # This machine has them all at their defaults, so hardcoding ~/.config would
 # work by coincidence -- and coincidence is exactly how `dev` broke, assuming
 # ~/.zshrc while ZDOTDIR pointed at ~/.config/zsh.

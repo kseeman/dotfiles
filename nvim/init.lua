@@ -41,7 +41,7 @@ require("lazy").setup({
 -- by being read. One stat decides it: the generated palette newer than the
 -- cache means a rice was switched or a wallpaper changed since this was built.
 --
--- Everywhere else in this repo a palette edit lands at the next login. Here it
+-- Everywhere else on the desktop a palette edit lands at the next login. Here it
 -- lands at the next nvim start, which is the same promise for a program that
 -- starts far more often.
 --
