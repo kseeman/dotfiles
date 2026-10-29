@@ -3,9 +3,10 @@
 Personal Neovim, zsh, tmux, and terminal configuration for **macOS (Apple
 Silicon)** and **Arch-based Linux**, from one repository.
 
-The two platforms share the editor, shell and tmux setup. Everything
-Linux-desktop related (Hyprland, HyDE, window-manager config) is Linux-only and
-never runs on a Mac. **This repo never installs HyDE on either platform.**
+The two platforms share the editor, shell and tmux setup. The Linux Hyprland
+desktop is a separate repository,
+[kseeman/desktop](https://github.com/kseeman/desktop), installed on top of this
+one, so a machine that does not want it never carries it.
 
 ## Install
 
@@ -34,8 +35,8 @@ cd ~/dotfiles
 It removes every symlink that points into this repo and puts back the
 `<name>.pre-dotfiles` the installer made of what it replaced, so the files from
 before the install return. It also removes this repo's hooks from
-`~/.claude/settings.json`, and on Linux the HyDE themes and wallbash template it
-installed.
+`~/.claude/settings.json`. On the Linux desktop, run the desktop repo's
+`uninstall.sh` first: it reads its helpers from this repo.
 
 Left in place, and listed at the end: Homebrew or pacman packages, Oh My Zsh
 (`uninstall_oh_my_zsh` removes it), Node versions, `~/.config/dotfiles`, and the
@@ -86,8 +87,7 @@ global instructions, agents, skills and hooks with the ones in `claude/`. Run
 the installer with `--no-claude` to leave `~/.claude` untouched; nothing else
 depends on it.
 
-Nothing Linux-specific runs on macOS: no pacman or AUR packages, no Hyprland,
-no HyDE themes.
+Nothing Linux-specific runs on macOS: no pacman or AUR packages.
 
 ## What the installer does on Linux
 
@@ -95,16 +95,12 @@ The same shared steps as macOS (Oh My Zsh, nvm, Neovim, tmux, Claude Code
 unless `--no-claude`, `~/.config/dotfiles`), plus:
 
 - Packages from `os/linux/pacman.txt` (`pacman -S --needed`) and
-  `os/linux/aur.txt` (via `paru` or `yay`). This includes a **Hyprland desktop**
-  package set (Hyprland, SDDM, Wayland utilities), so it assumes you want a
-  Hyprland machine.
-- The user-level Hyprland config in `os/linux/hypr/`, linked into
-  `~/.config/hypr/`.
-- If HyDE is **already** installed: the custom HyDE themes and a tmux color
-  template. Kitty and Fastfetch are then left to HyDE rather than linked.
+  `os/linux/aur.txt` (via `paru` or `yay`). Only the shared tools: no desktop.
+- Kitty and Fastfetch, linked as on macOS.
 
-HyDE is a separate project you install yourself; see
-[Linux: Hyprland and HyDE](#linux-hyprland-and-hyde).
+The Hyprland desktop is a separate repository,
+[kseeman/desktop](https://github.com/kseeman/desktop), installed on top of this
+one with its own `install.sh`; see [Linux desktop](#linux-desktop).
 
 ## Layout
 
@@ -122,8 +118,6 @@ claude/               Claude Code harness (CLAUDE.md, agents, skills, hooks)
 nvim/                 NvChad-based config with a multi-profile system
 os/macos/             Brewfile, install steps, macOS-only zsh
 os/linux/             pacman.txt, aur.txt, install steps, Linux-only zsh
-os/linux/hypr/        Linux only: user-tier Hyprland config
-os/linux/hyde-themes/ Linux only: custom HyDE themes, used when HyDE is present
 ```
 
 `os/<os>/zsh/` is sourced *before* the shared `zsh/` files. The OS files own
@@ -138,8 +132,8 @@ Two parallel manifests, kept in sync by hand:
 - Linux — `os/linux/pacman.txt` (`pacman -S --needed`), plus
   `os/linux/aur.txt` for anything not in the official repos
 
-Adding a cross-platform tool means adding it to both. The Hyprland desktop
-section of `pacman.txt` is Linux-only by nature and has no Brewfile counterpart.
+Adding a cross-platform tool means adding it to both. The desktop's own
+packages are in its repository's `packages/`, not here.
 
 ## tmux
 
@@ -183,11 +177,11 @@ tmux to install them, `C-b U` to update.
 
 ### Theming
 
-On macOS, and on Linux without HyDE, tmux uses the terminal's own palette.
-On Linux with HyDE, the status bar colors are generated from your current
-wallpaper — `os/linux/wallbash/tmux.dcol` regenerates
-`~/.config/tmux/wallbash.conf` on every theme or wallpaper change, and tmux
-picks it up immediately.
+tmux uses the terminal's own palette. On a machine running the
+[desktop](https://github.com/kseeman/desktop), the status bar instead follows
+the active rice: the desktop writes `$XDG_CACHE_HOME/dotfiles/theme/tmux.conf`,
+which `tmux.conf` sources last when it exists. Kitty and Neovim pick up the
+same palette the same way.
 
 ## Claude Code
 
@@ -232,62 +226,11 @@ or a project, so it is the one directory to back up:
 
 It contains secrets, so keep backups encrypted and never publish it.
 
-## Linux: Hyprland and HyDE
+## Linux desktop
 
-Everything in this section applies to Linux only. None of it runs on macOS.
-
-### Installing HyDE
-
-On a Linux machine that will use HyDE, it is a **prerequisite**, not something
-this installer sets up — install it first, then run `./install.sh`. Doing it in the other order links this repo's
-Kitty and Fastfetch configs into paths HyDE also wants; re-running the installer
-afterwards corrects it.
-
-```sh
-git clone https://github.com/HyDE-Project/HyDE ~/HyDE
-# run HyDE's own installer, then:
-./install.sh
-```
-
-The repo tracks the user-tier Hyprland files (`os/linux/hypr/`) and any custom
-themes, and leaves everything HyDE generates alone.
-
-`monitors.conf`, `workspaces.conf` and `nvidia.conf` are intentionally **not**
-tracked. The first two are generated by nwg-displays and name physical outputs
-(`monitor:DP-1`), so they describe one machine and would be wrong on another —
-and that tool rewrites them whenever displays are rearranged.
-
-### After updating HyDE
-
-HyDE's `restore.config.sh` deploys configs with `cp -rf`, and a plain copy onto
-a symlink **writes through it** — overwriting the file in this repo while
-leaving the symlink looking fine. Installing HyDE *first* avoids this entirely,
-but a later HyDE update can hit it.
-
-So after updating HyDE, check the repo:
-
-```sh
-git -C ~/dotfiles status --short os/linux/hypr
-git -C ~/dotfiles checkout -- os/linux/hypr   # if it clobbered them
-```
-
-Being tracked in git is what makes this recoverable rather than a silent loss.
-
-### Kitty, Fastfetch and themes
-
-If HyDE (the Hyprland desktop) is detected, both directories are left
-untouched — HyDE generates them and rewrites them on every theme switch. The
-Fastfetch startup banner still runs; it just uses HyDE's config. On a Linux
-machine without HyDE, the repo's versions are linked as on macOS.
-
-When HyDE *is* present, every directory under `os/linux/hyde-themes/` is
-installed as a custom theme — additive, so they sit alongside the shipped themes
-without overwriting anything. The directory name is the theme name:
-
-```sh
-hydectl theme set "Custom"
-```
-
-See `os/linux/hyde-themes/README.md` for how to add another, and why theme text
-files are symlinked but wallpapers are copied — HyDE's `find -H` discovery makes
-that mandatory, not a preference.
+The Hyprland desktop — bar, rices, lock screen, wallpaper, and the theming of
+tmux, kitty and Neovim — lives in
+[kseeman/desktop](https://github.com/kseeman/desktop). Install these dotfiles
+first, then that repo's `install.sh`; it uses this repo's `lib/install.sh` and
+themes the tools here by writing `$XDG_CACHE_HOME/dotfiles/theme/`. Nothing in
+this repo needs it.
