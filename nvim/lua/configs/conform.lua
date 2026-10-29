@@ -1,3 +1,9 @@
+-- Filetypes prettierd formats.
+local prettier_fts = {
+  javascript = true, javascriptreact = true, typescript = true, typescriptreact = true,
+  json = true, jsonc = true, css = true, scss = true, html = true, yaml = true,
+}
+
 -- A markdown buffer opened from an .ipynb by jupytext.nvim (python profile).
 -- The buffer keeps the notebook's name, so the extension identifies it.
 local function is_notebook(bufnr)
@@ -20,6 +26,13 @@ local options = {
   },
 
   formatters = {
+    -- Only where the project configures prettier (a .prettierrc*, a
+    -- prettier.config.*, or a "prettier" key in package.json), which conform
+    -- finds as the formatter's cwd. Elsewhere prettier's defaults would
+    -- restyle the whole file. <leader>fm then falls back to the LSP.
+    prettierd = {
+      require_cwd = true,
+    },
     sqlfluff = {
       -- sqlfluff exits with an error if --config names a missing file, so the
       -- personal ~/.sqlfluff is optional rather than required.
@@ -61,7 +74,17 @@ local options = {
     if vim.g.current_nvim_profile == "python" and ft == "python" then
       return { timeout_ms = 2000, lsp_format = "never" }
     end
+
+    -- The node profile does the same for JS/TS and its neighbours, limited
+    -- by prettierd's require_cwd to projects that configure prettier.
+    if vim.g.current_nvim_profile == "node" and prettier_fts[ft] then
+      return { timeout_ms = 2000, lsp_format = "never" }
+    end
   end,
 }
+
+for ft in pairs(prettier_fts) do
+  options.formatters_by_ft[ft] = { "prettierd" }
+end
 
 return options
