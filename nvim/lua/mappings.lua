@@ -200,6 +200,23 @@ vim.api.nvim_create_user_command("ProfileClear", function()
   profile_manager.clear_persisted_profile()
 end, { desc = "Clear persisted profile" })
 
+-- Convert the current buffer's JSON array to JSON Lines: one compact element
+-- per line. jq rather than vim.json, because a decode/encode round trip loses
+-- object key order. Only the buffer changes; saving it as .jsonl is :saveas.
+vim.api.nvim_create_user_command("JsonToJsonl", function()
+  local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+  local result = vim.system({
+    "jq", "-c",
+    'if type == "array" then .[] else ("top-level value is " + type + ", expected an array") | halt_error end',
+  }, { stdin = text }):wait()
+  if result.code ~= 0 then
+    vim.notify(vim.trim(result.stderr or "jq failed"), vim.log.levels.ERROR)
+    return
+  end
+  local lines = vim.split(result.stdout, "\n", { trimempty = true })
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+end, { desc = "Convert JSON array buffer to JSON Lines" })
+
 -- Keybinding flashcards drawn from the live keymap table, either direction;
 -- see configs/keydrill.
 -- `!` includes every map with a desc, not just <leader> ones; an argument
