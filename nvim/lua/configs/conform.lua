@@ -87,4 +87,11 @@ for ft in pairs(prettier_fts) do
   options.formatters_by_ft[ft] = { "prettierd" }
 end
 
+-- Outside a prettier-configured project, require_cwd makes prettierd
+-- unavailable and no LSP formats json, so <leader>fm had nothing. jq (in both
+-- package manifests) takes those files; stop_after_first keeps it from
+-- re-styling prettierd's output where both are available. Not jsonc: jq
+-- rejects comments.
+options.formatters_by_ft.json = { "prettierd", "jq", stop_after_first = true }
+
 return options
