@@ -203,10 +203,18 @@ return {
       -- has filled the buffer and treesitter has folds to close.
       --
       -- The fold comes from after/queries/markdown/folds.scm (`za` opens it).
-      -- The kernel starts only if it is registered (so a notebook from
-      -- another machine falls back to the <leader>ji picker rather than
-      -- erroring) and none is running in this buffer yet (so :e does not
-      -- start a second one).
+      -- The kernel starts only if molten itself is registered, the kernel is
+      -- registered (so a notebook from another machine falls back to the
+      -- <leader>ji picker rather than erroring) and none is running in this
+      -- buffer yet (so :e does not start a second one).
+      --
+      -- Molten's functions come from the rplugin manifest, so on a machine
+      -- where :UpdateRemotePlugins has not run (or the host venv is broken)
+      -- vim.fn.MoltenRunningKernels raises E117 on every notebook open. The
+      -- guard is exists(":MoltenInit"), not exists("*MoltenRunningKernels"):
+      -- the manifest defines the commands eagerly but the functions only once
+      -- the host has started, so the function probe reads 0 on a healthy
+      -- machine too.
       vim.api.nvim_create_autocmd("BufReadCmd", {
         pattern = "*.ipynb",
         group = vim.api.nvim_create_augroup("jupytext-notebook-open", { clear = true }),
@@ -231,6 +239,7 @@ return {
 
               if
                 kernel
+                and vim.fn.exists ":MoltenInit" == 2
                 and #vim.fn.MoltenRunningKernels(true) == 0
                 and vim.tbl_contains(vim.fn.MoltenAvailableKernels(), kernel)
               then
