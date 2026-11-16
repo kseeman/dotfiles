@@ -3,7 +3,7 @@
 
   // Built-in Apple ASCII art. This is the fallback: in kitty,
   // `run_fastfetch()` in zsh/functions.zsh overrides it with
-  // `--logo-type kitty-direct` and a random image from ~/Pictures/TermPhotos.
+  // `--logo-type kitty` and a random image from ~/Pictures/TermPhotos.
   // Command-line flags win over this block, so the two don't conflict.
   "logo": {
     "type": "builtin",

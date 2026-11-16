@@ -53,10 +53,14 @@ run_fastfetch() {
         random_fastfetch_image
 
         if [[ -n "$REPLY_FASTFETCH_IMAGE" ]]; then
+            # Height only, so the width follows the image's own aspect
+            # ratio. Giving both forces every image into one box, and
+            # kitty-direct cannot keep the aspect at all: it hands kitty
+            # the cell box and kitty stretches to fill it. `kitty` scales
+            # with ImageMagick instead and caches the result.
             command fastfetch --config "$config" \
-                --logo-type kitty-direct \
+                --logo-type kitty \
                 --logo "$REPLY_FASTFETCH_IMAGE" \
-                --logo-width 30 \
                 --logo-height 15
             return
         fi
