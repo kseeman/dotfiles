@@ -131,6 +131,10 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "\"$HOME/.claude/hooks/statusline.sh\""
+  },
   "tui": "fullscreen",
   "editorMode": "vim",
   "skipAutoPermissionPrompt": true
