@@ -29,6 +29,12 @@ return {
         return
       end
 
+      -- jdtls compiles with ECJ, not javac, so Lombok's annotation processor never
+      -- runs and every generated member (`log`, getters, builders) is "cannot be
+      -- resolved" even though Maven builds. Lombok patches ECJ only when loaded as
+      -- a JVM agent. Mason's jdtls package ships the jar beside the launcher.
+      local lombok_jar = jdtls_install .. '/lombok.jar'
+
       -- Get default capabilities from NvChad
       local capabilities = require("nvchad.configs.lspconfig").capabilities
 
@@ -240,22 +246,29 @@ return {
         local workspace_dir = home .. '/.cache/jdtls/workspace/'
           .. vim.fn.fnamemodify(root_dir, ':t') .. '-' .. vim.fn.sha256(root_dir):sub(1, 8)
 
+        local cmd = {
+          'java',
+          '-Declipse.application=org.eclipse.jdt.ls.core.id1',
+          '-Dosgi.bundles.defaultStartLevel=4',
+          '-Declipse.product=org.eclipse.jdt.ls.core.product',
+          '-Dlog.protocol=true',
+          '-Dlog.level=ALL',
+          '-Xms1g',
+          '--add-modules=ALL-SYSTEM',
+          '--add-opens', 'java.base/java.util=ALL-UNNAMED',
+          '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+          '-jar', launcher_jar,
+          '-configuration', jdtls_install .. '/' .. config_name,
+          '-data', workspace_dir
+        }
+        -- A JVM option, so it must come before `-jar`. Skipped rather than passed
+        -- when absent: a missing agent jar stops the JVM from starting at all.
+        if vim.uv.fs_stat(lombok_jar) then
+          table.insert(cmd, 2, '-javaagent:' .. lombok_jar)
+        end
+
         jdtls.start_or_attach({
-          cmd = {
-            'java',
-            '-Declipse.application=org.eclipse.jdt.ls.core.id1',
-            '-Dosgi.bundles.defaultStartLevel=4',
-            '-Declipse.product=org.eclipse.jdt.ls.core.product',
-            '-Dlog.protocol=true',
-            '-Dlog.level=ALL',
-            '-Xms1g',
-            '--add-modules=ALL-SYSTEM',
-            '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-            '-jar', launcher_jar,
-            '-configuration', jdtls_install .. '/' .. config_name,
-            '-data', workspace_dir
-          },
+          cmd = cmd,
           root_dir = root_dir,
           settings = settings,
           -- Client-side extensions (organize imports, generate accessors, the
